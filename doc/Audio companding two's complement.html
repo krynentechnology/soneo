@@ -1,1 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta http-equiv="content-type" content="text/html; charset=UTF-8">
+  <title>Krynen Technology</title>
+  <style type="text/css">
+    pre { background: transparent }
+    pre.western { font-family: "Liberation Mono", monospace; font-size: 10pt }
+  </style>
+</head>
+<body>
+<div id="container">
+<div id="main"><div style="width:900px; margin:auto; text-align:left"><!-- begin of content -->
+
+<p>Copyright &copy; 2024 Kees Krijnen</p>
+
+<pre class="western"><h3>Audio companding 16-bit two's complement</h3>
+13-bits significant (including sign) 20-bits value companding to 16-bits value
+
+13 bits ~ 78 dB psychoacoustic masking -&gt; 20 bits ~ 120 dB dynamic range
+
+0 1 abcdefghijkl 000000 -&gt; 0 111 abcdefghijkl
+0 01 abcdefghijkl 00000 -&gt; 0 110 abcdefghijkl
+0 001 abcdefghijkl 0000 -&gt; 0 101 abcdefghijkl
+0 0001 abcdefghijkl 000 -&gt; 0 100 abcdefghijkl
+0 00001 abcdefghijkl 00 -&gt; 0 011 abcdefghijkl
+0 000001 abcdefghijkl 0 -&gt; 0 010 abcdefghijkl
+0 0000001  abcdefghijkl -&gt; 0 001 abcdefghijkl
+0 0000000  abcdefghijkl -&gt; 0 000 abcdefghijkl
+
+1 0 abcdefghijkl 111111 -&gt; 1 000 abcdefghijkl
+1 10 abcdefghijkl 11111 -&gt; 1 001 abcdefghijkl
+1 110 abcdefghijkl 1111 -&gt; 1 010 abcdefghijkl
+1 1110 abcdefghijkl 111 -&gt; 1 011 abcdefghijkl
+1 11110 abcdefghijkl 11 -&gt; 1 100 abcdefghijkl
+1 111110 abcdefghijkl 1 -&gt; 1 101 abcdefghijkl
+1 1111110  abcdefghijkl -&gt; 1 110 abcdefghijkl
+1 1111111  abcdefghijkl -&gt; 1 111 abcdefghijkl
+
+2-bits significant (including sign) 9-bits value companding to 5-bits value 
+
+0 1 a 000000 -&gt; 0 111 a   0 1 0 000000 -&gt; 0 111 0   128 -&gt;  14   0 1 1 000000 -&gt; 0 111 1   192 -&gt;  15
+0 01 a 00000 -&gt; 0 110 a   0 01 0 00000 -&gt; 0 110 0   64  -&gt;  12   0 01 1 00000 -&gt; 0 110 1   96  -&gt;  13
+0 001 a 0000 -&gt; 0 101 a   0 001 0 0000 -&gt; 0 101 0   32  -&gt;  10   0 001 1 0000 -&gt; 0 101 1   48  -&gt;  11
+0 0001 a 000 -&gt; 0 100 a   0 0001 0 000 -&gt; 0 100 0   16  -&gt;  8    0 0001 1 000 -&gt; 0 100 1   24  -&gt;  9
+0 00001 a 00 -&gt; 0 011 a   0 00001 0 00 -&gt; 0 011 0   8   -&gt;  6    0 00001 1 00 -&gt; 0 011 1   12  -&gt;  7
+0 000001 a 0 -&gt; 0 010 a   0 000001 0 0 -&gt; 0 010 0   4   -&gt;  4    0 000001 1 0 -&gt; 0 010 1   6   -&gt;  5
+0 0000001 a  -&gt; 0 001 a   0 0000001  0 -&gt; 0 001 0   2   -&gt;  2    0 0000001  1 -&gt; 0 001 1   3   -&gt;  3
+0 0000000 a  -&gt; 0 000 a   0 0000000  0 -&gt; 0 000 0   0   -&gt;  0    0 0000000  1 -&gt; 0 000 1   1   -&gt;  1
+
+1 0 a 111111 -&gt; 1 000 a   1 0 0 111111 -&gt; 1 000 0  -193 -&gt; -16   1 0 1 111111 -&gt; 1 000 1  -129 -&gt; -15
+1 10 a 11111 -&gt; 1 001 a   1 10 0 11111 -&gt; 1 001 0  -97  -&gt; -14   1 10 1 11111 -&gt; 1 001 1  -65  -&gt; -13
+1 110 a 1111 -&gt; 1 010 a   1 110 0 1111 -&gt; 1 010 0  -53  -&gt; -12   1 110 1 1111 -&gt; 1 010 1  -33  -&gt; -11
+1 1110 a 111 -&gt; 1 011 a   1 1110 0 111 -&gt; 1 011 0  -25  -&gt; -10   1 1110 1 111 -&gt; 1 011 1  -17  -&gt; -9
+1 11110 a 11 -&gt; 1 100 a   1 11110 0 11 -&gt; 1 100 0  -13  -&gt; -8    1 11110 1 11 -&gt; 1 100 1  -9   -&gt; -7
+1 111110 a 1 -&gt; 1 101 a   1 111110 0 1 -&gt; 1 101 0  -7   -&gt; -6    1 111110 1 1 -&gt; 1 101 1  -5   -&gt; -5
+1 1111110  a -&gt; 1 110 a   1 1111110  0 -&gt; 1 110 0  -4   -&gt; -4    1 1111110  1 -&gt; 1 110 1  -3   -&gt; -3
+1 1111111  a -&gt; 1 111 a   1 1111111  0 -&gt; 1 111 0  -2   -&gt; -2    1 1111111  1 -&gt; 1 111 1  -1   -&gt; -1
+
+12-bits significant (including sign) 28-bits value companding to 16-bits value
+
+12 bits ~ 72 dB psychoacoustic masking -&gt; 28 bits ~ 168 dB dynamic range
+
+0 1 abcdefghijk 000000000000000 -&gt; 0 1111 abcdefghijk
+0 01 abcdefghijk 00000000000000 -&gt; 0 1110 abcdefghijk
+0 001 abcdefghijk 0000000000000 -&gt; 0 1011 abcdefghijk
+0 0001 abcdefghijk 000000000000 -&gt; 0 1100 abcdefghijk
+0 00001 abcdefghijk 00000000000 -&gt; 0 1011 abcdefghijk
+0 000001 abcdefghijk 0000000000 -&gt; 0 1010 abcdefghijk
+0 0000001 abcdefghijk 000000000 -&gt; 0 1001 abcdefghijk
+0 00000001 abcdefghijk 00000000 -&gt; 0 1000 abcdefghijk
+0 000000001 abcdefghijkl 000000 -&gt; 0 0111 abcdefghijk
+0 0000000001 abcdefghijkl 00000 -&gt; 0 0110 abcdefghijk
+0 00000000001 abcdefghijkl 0000 -&gt; 0 0011 abcdefghijk
+0 000000000001 abcdefghijkl 000 -&gt; 0 0100 abcdefghijk
+0 0000000000001 abcdefghijkl 00 -&gt; 0 0011 abcdefghijk
+0 00000000000001 abcdefghijkl 0 -&gt; 0 0010 abcdefghijk
+0 000000000000001  abcdefghijkl -&gt; 0 0001 abcdefghijk
+0 000000000000000  abcdefghijkl -&gt; 0 0000 abcdefghijk
+
+1 0 abcdefghijkl 11111111111111 -&gt; 1 0000 abcdefghijk
+1 10 abcdefghijkl 1111111111111 -&gt; 1 0001 abcdefghijk
+1 110 abcdefghijkl 111111111111 -&gt; 1 0010 abcdefghijk
+1 1110 abcdefghijkl 11111111111 -&gt; 1 0011 abcdefghijk
+1 11110 abcdefghijkl 1111111111 -&gt; 1 0100 abcdefghijk
+1 111110 abcdefghijkl 111111111 -&gt; 1 0101 abcdefghijk
+1 1111110 abcdefghijkl 11111111 -&gt; 1 0110 abcdefghijk
+1 11111110 abcdefghijkl 1111111 -&gt; 1 0111 abcdefghijk
+1 111111110 abcdefghijkl 111111 -&gt; 1 1000 abcdefghijk
+1 1111111110 abcdefghijkl 11111 -&gt; 1 1001 abcdefghijk
+1 11111111110 abcdefghijkl 1111 -&gt; 1 1010 abcdefghijk
+1 111111111110 abcdefghijkl 111 -&gt; 1 1011 abcdefghijk
+1 1111111111110 abcdefghijkl 11 -&gt; 1 1100 abcdefghijk
+1 11111111111110 abcdefghijkl 1 -&gt; 1 1101 abcdefghijk
+1 111111111111110  abcdefghijkl -&gt; 1 1110 abcdefghijk
+1 111111111111111  abcdefghijkl -&gt; 1 1111 abcdefghijk
+
+2-bits significant (including sign) 17-bits value companding to 6-bits value 
+
+0 1 a 00000000000000 -&gt; 0 1111 a   0 1 0 00000000000000 -&gt; 0 1111 0   32768 -&gt;  30   0 1 1 00000000000000 -&gt; 0 1111 1   49152 -&gt;  31
+0 01 a 0000000000000 -&gt; 0 1110 a   0 01 0 0000000000000 -&gt; 0 1110 0   16384 -&gt;  28   0 01 1 0000000000000 -&gt; 0 1110 1   24578 -&gt;  29
+0 001 a 000000000000 -&gt; 0 1101 a   0 001 0 000000000000 -&gt; 0 1101 0   8192  -&gt;  26   0 001 1 000000000000 -&gt; 0 1101 1   12288 -&gt;  27
+0 0001 a 00000000000 -&gt; 0 1100 a   0 0001 0 00000000000 -&gt; 0 1100 0   4096  -&gt;  24   0 0001 1 00000000000 -&gt; 0 1100 1   6144  -&gt;  25
+0 00001 a 0000000000 -&gt; 0 1011 a   0 00001 0 0000000000 -&gt; 0 1011 0   2048  -&gt;  22   0 00001 1 0000000000 -&gt; 0 1011 1   3072  -&gt;  23
+0 000001 a 000000000 -&gt; 0 1010 a   0 000001 0 000000000 -&gt; 0 1010 0   1024  -&gt;  20   0 000001 1 000000000 -&gt; 0 1010 1   1536  -&gt;  21
+0 0000001 a 00000000 -&gt; 0 1001 a   0 0000001 0 00000000 -&gt; 0 1001 0   512   -&gt;  18   0 0000001 1 00000000 -&gt; 0 1001 1   768   -&gt;  19
+0 00000001 a 0000000 -&gt; 0 1000 a   0 00000001 0 0000000 -&gt; 0 1000 0   256   -&gt;  16   0 00000001 1 0000000 -&gt; 0 1000 1   384   -&gt;  17
+0 000000001 a 000000 -&gt; 0 0111 a   0 000000001 0 000000 -&gt; 0 0111 0   128   -&gt;  14   0 000000001 1 000000 -&gt; 0 0111 1   192   -&gt;  15
+0 0000000001 a 00000 -&gt; 0 0110 a   0 0000000001 0 00000 -&gt; 0 0110 0   64    -&gt;  12   0 0000000001 1 00000 -&gt; 0 0110 1   96    -&gt;  13
+0 00000000001 a 0000 -&gt; 0 0101 a   0 00000000001 0 0000 -&gt; 0 0101 0   32    -&gt;  10   0 00000000001 1 0000 -&gt; 0 0101 1   48    -&gt;  11
+0 000000000001 a 000 -&gt; 0 0100 a   0 000000000001 0 000 -&gt; 0 0100 0   16    -&gt;  8    0 000000000001 1 000 -&gt; 0 0100 1   24    -&gt;  9
+0 0000000000001 a 00 -&gt; 0 0011 a   0 0000000000001 0 00 -&gt; 0 0011 0   8     -&gt;  6    0 0000000000001 1 00 -&gt; 0 0011 1   12    -&gt;  7
+0 00000000000001 a 0 -&gt; 0 0010 a   0 00000000000001 0 0 -&gt; 0 0010 0   4     -&gt;  4    0 00000000000001 1 0 -&gt; 0 0010 1   6     -&gt;  5
+0 000000000000001  a -&gt; 0 0001 a   0 000000000000001  0 -&gt; 0 0001 0   2     -&gt;  2    0 000000000000001  1 -&gt; 0 0001 1   3     -&gt;  3
+0 000000000000000  a -&gt; 0 0000 a   0 000000000000000  0 -&gt; 0 0000 0   0     -&gt;  0    0 000000000000000  1 -&gt; 0 0000 1   1     -&gt;  1
+
+1 0 a 11111111111111 -&gt; 1 0000 a   1 0 0 11111111111111 -&gt; 1 0000 0  -49153 -&gt; -32   1 0 1 11111111111111 -&gt; 1 0000 1  -32769 -&gt; -31
+1 10 a 1111111111111 -&gt; 1 0001 a   1 10 0 1111111111111 -&gt; 1 0001 0  -24577 -&gt; -30   1 10 1 1111111111111 -&gt; 1 0001 1  -16385 -&gt; -29
+1 110 a 111111111111 -&gt; 1 0010 a   1 110 0 111111111111 -&gt; 1 0010 0  -12289 -&gt; -28   1 110 1 111111111111 -&gt; 1 0010 1  -8193  -&gt; -27
+1 1110 a 11111111111 -&gt; 1 0011 a   1 1110 0 11111111111 -&gt; 1 0011 0  -6145  -&gt; -26   1 1110 1 11111111111 -&gt; 1 0011 1  -4097  -&gt; -25
+1 11110 a 1111111111 -&gt; 1 0100 a   1 11110 0 1111111111 -&gt; 1 0100 0  -3073  -&gt; -24   1 11110 1 1111111111 -&gt; 1 0100 1  -2049  -&gt; -23
+1 111110 a 111111111 -&gt; 1 0101 a   1 111110 0 111111111 -&gt; 1 0101 0  -1537  -&gt; -22   1 111110 1 111111111 -&gt; 1 0101 1  -1025  -&gt; -21
+1 1111110 a 11111111 -&gt; 1 0110 a   1 1111110 0 11111111 -&gt; 1 0110 0  -769   -&gt; -20   1 1111110 1 11111111 -&gt; 1 0110 1  -513   -&gt; -19
+1 11111110 a 1111111 -&gt; 1 0111 a   1 11111110 0 1111111 -&gt; 1 0111 0  -385   -&gt; -18   1 11111110 1 1111111 -&gt; 1 0111 1  -257   -&gt; -17
+1 111111110 a 111111 -&gt; 1 1000 a   1 111111110 0 111111 -&gt; 1 1000 0  -193   -&gt; -16   1 111111110 1 111111 -&gt; 1 1000 1  -129   -&gt; -15
+1 1111111110 a 11111 -&gt; 1 1001 a   1 1111111110 0 11111 -&gt; 1 1001 0  -97    -&gt; -14   1 1111111110 1 11111 -&gt; 1 1001 1  -65    -&gt; -13
+1 11111111110 a 1111 -&gt; 1 1010 a   1 11111111110 0 1111 -&gt; 1 1010 0  -53    -&gt; -12   1 11111111110 1 1111 -&gt; 1 1010 1  -33    -&gt; -11
+1 111111111110 a 111 -&gt; 1 1011 a   1 111111111110 0 111 -&gt; 1 1011 0  -25    -&gt; -10   1 111111111110 1 111 -&gt; 1 1011 1  -17    -&gt; -9
+1 1111111111110 a 11 -&gt; 1 1100 a   1 1111111111110 0 11 -&gt; 1 1100 0  -13    -&gt; -8    1 1111111111110 1 11 -&gt; 1 1100 1  -9     -&gt; -7
+1 11111111111110 a 1 -&gt; 1 1101 a   1 11111111111110 0 1 -&gt; 1 1101 0  -7     -&gt; -6    1 11111111111110 1 1 -&gt; 1 1101 1  -5     -&gt; -5
+1 111111111111110  a -&gt; 1 1110 a   1 111111111111110  0 -&gt; 1 1110 0  -4     -&gt; -4    1 111111111111110  1 -&gt; 1 1110 1  -3     -&gt; -3
+1 111111111111111  a -&gt; 1 1111 a   1 111111111111111  0 -&gt; 1 1111 0  -2     -&gt; -2    1 111111111111111  1 -&gt; 1 1111 1  -1     -&gt; -1</pre>
+
+</div></div><!-- end of content -->
+</div><!-- /container -->
+</body>
+</html>
 
