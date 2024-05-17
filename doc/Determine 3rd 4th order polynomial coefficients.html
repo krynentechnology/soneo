@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta http-equiv="content-type" content="text/html; charset=UTF-8">
+  <title>Krynen Technology</title>
+  <style type="text/css">
+    pre { background: transparent }
+    pre.western { font-family: "Liberation Mono", monospace; font-size: 10pt }
+  </style>
+</head>
+<body>
+<div id="container">
+<div id="main"><div style="width:900px; margin:auto; text-align:left"><!-- begin of content -->
+
+<p>Copyright &copy; 2024 Kees Krijnen</p>
+
+<pre class="western"><h3>Determine 3rd 4th order polynomial coefficients</h3>
+The purpose of interpolation is to determine the amplitude y(x), for an
+arbitrary x, where x is a fraction between 0.0 and 1.0:
+
+      y(-2)        y(-1)       y(0)  y(x)  y(1)        y(2)
+        |            |           |     |     |           |
+    -- -2 --------- -1 --------- 0 --- x --- 1 --------- 2 -----&gt; T (time)
+        |            |           |           |           |
+        p2           p1          p0          n1          n2
+        
+The samples being interpolated represent the wave amplitude at a particular
+instant of time, T - an impulse train. So each sample is the amplitude at
+T = ..., -2, -1, 0, 1, 2, ... etc.
+
+Determination n-th order polynomial coefficients requires n+1 data points, n-th
+order polynomials coefficients could be derived by substitution or by setup an
+n x n matrix and determine the inverse of this matrix.
+
+When the polynomial coefficients are known y(x) can be calculated:
+
+3rd order polynomial:
+
+  y(x) = ax3 + bx2 + cx + d
+  y(x) = x(x(ax + b) + c) + d
+     x = -1, 0, 1, 2                 Determine coefficients by substitution
+
+  y(-1) -&gt; p1 = -a + b - c + d            a = (-p1 + 3p0 - 3n1 + n2)/6
+  y(0)  -&gt; p0 = d                         b = (p1 - 2p0 + n1)/2
+  y(1)  -&gt; n1 = a + b + c + d             c = (-2p1 - 3p0 + 6n1 - n2)/6
+  y(2)  -&gt; n2 = 8a + 4b + 2c + d          d = p0
+
+  Substitution:
+
+     a + c = b - p1 + p0
+     a + c = n1 - b - p0
+     b - p1 + p0 = n1 - b - p0
+     2b = p1 - 2p0 + n1
+
+     2c = -2a + (p1 - 2p0 + n1) - 2p1 + 2p0 = -2a - p1 + n1
+     2c = -8a - 2p1 + 3p0 - 2n1 + n2
+     -2a - p1 + n1 = -8a - 2p1 + 3p0 - 2n1 + n2
+     6a = -p1 + 3p0 - 3n1 + n2
+
+     6c = -6a - 3p1 + 3n1 = -(-p1 + 3p0 - 3n1 + n2) - 3p1 + 3n1
+     6c = -2p1 - 3p0 + 6n1 - n2
+
+4th order polynomial:
+
+  y(x) = ax4 + bx3 + cx2 + dx + e
+  y(x) = x(x(x(ax + b) + c) + d) + e
+     x = -2, -1, 0, 1, 2             Determine coefficients by substitution
+
+  y(-2) -&gt; p2 = 16a - 8b + 4c - 2d + e    a = (p2 - 4p1 + 6p0 - 4n1 + n2)/24
+  y(-1) -&gt; p1 = a - b + c - d + e         b = (-p2 + 2p1 - 2n1 + n2)/12
+  y(0)  -&gt; p0 = e                         c = (-p2 + 16p1 - 30p0 + 16n1 - n2)/24
+  y(1)  -&gt; n1 = a + b + c + d + e         d = (p2 - 8p1 + 8n1 - n2)/12
+  y(2)  -&gt; n2 = 16a + 8b + 4c + 2d + e    e = p0
+
+  Substitution:
+
+    -p0 + p1 + b + d = a + c
+    -p0 + n1 - b - d = a + c
+    p1 + b + d = n1 - b - d
+    2d = -p1 + n1 - 2b
+    p2 + 8b + 2d = n2 - 8b - 2d
+    p2 + 8b + (-p1 + n1 - 2b) = n2 - 8b - (-p1 + n1 - 2b)
+    p2 - p1 + n1 + 6b = p1 - n1 + n2 - 6b
+    12b = -p2 + 2p1 - 2n1 + n2
+
+    2d = -p1 + n1 - (-p2 + 2p1 - 2n1 + n2)/6
+    12d = p2 - 8p1 + 8n1 - n2
+
+    6n2 = 96a + 48b + 24c + 12d + 6e
+    6n2 = 96a - 4p2 + 8p1 - 8n1 + 4n2 + 24c + p2 - 8p1 + 8n1 - n2 + 6p0
+    3n2 = -3p2 + 6p0 + 96a + 24c
+
+    12n1 = 12a + 12b + 12c + 12d + 12e
+    12n1 = 12a - p2 + 2p1 - 2n1 + n2 + 12c + p2 - 8p1 + 8n1 - n2 + 12p0
+    6n1 = 12p0 - 6p1 + 12a + 12c
+    12n1 = 24p0 - 12p1 + 24a + 24c
+    24c = -24p0 + 12p1 + 12n1 - 24a
+    
+    3n2 = -3p2 + 6p0 + 96a - 24p0 + 12p1 + 12n1 - 24a
+    3n2 = -3p2 + 12p1 - 18p0 + 12n1 + 72a
+    72a = 3p2 - 12p1 + 18p0 - 12n1 + 3n2
+    24a = p2 - 4p1 + 6p0 - 4n1 + n2
+
+    24c =  12p1 - 24p0 + 12n1 - (p2 - 4p1 + 6p0 - 4n1 + n2)
+    24c = -p2 + 16p1 - 30p0 + 16n1 - n2 </pre>
+
+</div></div><!-- end of content -->
+</div><!-- /container -->
+</body>
+</html>
