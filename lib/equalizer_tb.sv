@@ -87,7 +87,7 @@ initial begin
     eq_coeff_sel = 1; // B0 factor = 1.0
     $display( "Equalizer simulation started" );
     #1000    // 1us
-    $display( "Use B0 factor = 1.0" );
+    $display( "Set B0 factor = 1.0" );
     rst_n = 1;
     m_tready = 1;
     #1000000 // 1ms
@@ -99,10 +99,10 @@ initial begin
     $display( "Unmute signal" );
     mute = 0;
     eq_coeff_sel = 2; // B0 factor = 1.5
-    $display( "Use B0 factor = 1.5" );
+    $display( "Set B0 factor = 1.5" );
     #1000000 // 1ms
     eq_coeff_sel = 3; // B0 factor = 0.5
-    $display( "Use B0 factor = 0.5" );
+    $display( "Set B0 factor = 0.5" );
     #1000000 // 1ms
     mute = 1;
     #100000 // 0.1ms

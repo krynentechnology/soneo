@@ -85,10 +85,10 @@ output wire overflow;
 // Feed forward coefficients
 localparam A0 = 1;
 localparam A1 = 2;
-localparam A2 = 3; // Number of feed forward coefficients
+localparam A2 = 3;
 // Feed backward coefficients
 localparam B1 = 4;
-localparam B2 = 5; // Number of band coefficients
+localparam B2 = 5;
 
 localparam EQ_SAMPLE_WIDTH = EQ_COEFF_WIDTH;
 localparam NR_EQ_BAND_ELEMENTS = ( A2 * ( NR_EQ_BANDS + 1 )); // +1 for last Y0, Y1, Y2
@@ -201,7 +201,6 @@ always @(posedge clk) begin : biquad // Equalizer biquad algorithm
     end
     store <= init;
     if ( store ) begin
-        // Point to X0/Y0
         eq_ram_wr_index <= eq_ram_rd_index;
         eq_ram_wr_data <= eq_ram_rd_data;
         eq_ram_wr <= 1;
@@ -212,36 +211,33 @@ always @(posedge clk) begin : biquad // Equalizer biquad algorithm
     end
     store_and_shift <= store;
     if ( store_and_shift ) begin
-        // X1/Y1 = X0/Y0
         eq_ram_wr_index <= eq_ram_wr_index + 1;
         eq_ram_wr_data <= eq_ram_rd_data;
         eq_ram_wr <= 1;
     end
     store_sum <= store_and_shift;
     if ( store_sum ) begin
-        // X2/Y2 = X1/Y2
-        eq_ram_rd_index <= Y0_index; // Point again to X0/Y0
+        eq_ram_rd_index <= Y0_index;
         eq_ram_wr_index <= Y0_index;
-        eq_ram_wr_data[EQ_SAMPLE_WIDTH-1] <= sum[( EQ_SAMPLE_WIDTH * 2 )-1]; // Copy sign bit and normalize
-        // Check for positive and negative overflow
+        eq_ram_wr_data[EQ_SAMPLE_WIDTH-1] <= sum[( EQ_SAMPLE_WIDTH * 2 )-1];
         if ( !sum[( EQ_SAMPLE_WIDTH * 2 )-1] && ( sum[(( EQ_SAMPLE_WIDTH * 2 )- 2 ):( EQ_SAMPLE_WIDTH * 2) - EQ_SUM_HEADROOM - 1] != ALL_ZERO[EQ_SUM_HEADROOM-1:0])) begin
-            eq_ram_wr_data[EQ_SAMPLE_WIDTH-2:0] <= ALL_ONES; // Positive maximum
+            eq_ram_wr_data[EQ_SAMPLE_WIDTH-2:0] <= ALL_ONES;
         end
         else if ( sum[( EQ_SAMPLE_WIDTH * 2 )-1] && ( sum[(( EQ_SAMPLE_WIDTH * 2 ) - 2 ):( EQ_SAMPLE_WIDTH * 2 ) - EQ_SUM_HEADROOM - 1] != ALL_ONES[EQ_SUM_HEADROOM-1:0])) begin
-            eq_ram_wr_data[EQ_SAMPLE_WIDTH-2:0] <= ALL_ZERO; // Negative maximum
+            eq_ram_wr_data[EQ_SAMPLE_WIDTH-2:0] <= ALL_ZERO;
         end
         else begin
             eq_ram_wr_data[EQ_SAMPLE_WIDTH-2:0] <= sum[(( EQ_SAMPLE_WIDTH * 2 ) - EQ_SUM_HEADROOM - 2 ):( EQ_SAMPLE_WIDTH-EQ_SUM_HEADROOM )];
         end
-        if ( first_iteration ) begin // First iteration after s_tvalid event
-            eq_ram_wr_data <= input_data; // Copy input sample
+        if ( first_iteration ) begin
+            eq_ram_wr_data <= input_data;
             first_iteration <= 0;
         end
         eq_ram_wr <= 1;
     end
     calc_eq_band <= store_sum;
     if ( calc_eq_band ) begin
-        Y0_index <= Y0_index + A2; // Point to X0/Y0 (next) band
+        Y0_index <= Y0_index + A2;
         sum <= 0;
         if ( eq_ram_rd_index == Y0_out_index ) begin
             out_tdata_r <= eq_ram_wr_data;
@@ -259,9 +255,9 @@ always @(posedge clk) begin : biquad // Equalizer biquad algorithm
         if ( i_eq_coeff_addr != ( NR_EQ_COEFF - 1 )) begin
             i_eq_coeff_addr <= i_eq_coeff_addr + 1;
         end
-        product <= $signed( eq_coeff ) * eq_ram_wr_data; // Multiply
-        if ( b2 ) begin // All band coefficients processed
-            eq_ram_rd_index <= Y0_index; // Point to X0/Y0 (= Y0 previous sample = Y1!)
+        product <= $signed( eq_coeff ) * eq_ram_wr_data;
+        if ( b2 ) begin
+            eq_ram_rd_index <= Y0_index;
         end
         else begin
             eq_ram_rd_index <= eq_ram_rd_index + 1;
@@ -269,8 +265,8 @@ always @(posedge clk) begin : biquad // Equalizer biquad algorithm
     end
     accumulate <= multiply;
     if ( accumulate ) begin
-        sum <= sum + product; // Accumulate
-        eq_ram_wr_data <= eq_ram_rd_data; // Get next X/Y sample
+        sum <= sum + product;
+        eq_ram_wr_data <= eq_ram_rd_data;
         if ( b2 ) begin
             eq_ram_rd_index <= eq_ram_rd_index + 1;
             store <= 1;
