@@ -168,20 +168,20 @@ endfunction
 localparam signed [EQ_COEFF_WIDTH-1:0] A0_1KHz = signed_eq_coeff( 0.9155020528055772 );
 localparam signed [EQ_COEFF_WIDTH-1:0] A1_1KHz = signed_eq_coeff( -1.8153396116625289 );
 localparam signed [EQ_COEFF_WIDTH-1:0] A2_1KHz = signed_eq_coeff( 0.9155020528055772 );
-localparam signed [EQ_COEFF_WIDTH-1:0] B1_1KHz = signed_eq_coeff( 1.8153396116625289 );  // -B1 (== A1)
-localparam signed [EQ_COEFF_WIDTH-1:0] B2_1KHz = signed_eq_coeff( -0.8310041056111546 ); // -B2
+localparam signed [EQ_COEFF_WIDTH-1:0] B1_1KHz = signed_eq_coeff( 1.8153396116625289 );
+localparam signed [EQ_COEFF_WIDTH-1:0] B2_1KHz = signed_eq_coeff( -0.8310041056111546 );
 // 4000Hz notch filter (Q = 0.7071)
 localparam signed [EQ_COEFF_WIDTH-1:0] A0_4KHz = signed_eq_coeff( 0.7387942743704942 );
 localparam signed [EQ_COEFF_WIDTH-1:0] A1_4KHz = signed_eq_coeff( -1.2796292195506773 );
 localparam signed [EQ_COEFF_WIDTH-1:0] A2_4KHz = signed_eq_coeff( 0.7387942743704942 );
-localparam signed [EQ_COEFF_WIDTH-1:0] B1_4KHz = signed_eq_coeff( 1.2796292195506773 );   // -B1 (== A1)
-localparam signed [EQ_COEFF_WIDTH-1:0] B2_4KHz = signed_eq_coeff( -0.47758854874098844 ); // -B2
+localparam signed [EQ_COEFF_WIDTH-1:0] B1_4KHz = signed_eq_coeff( 1.2796292195506773 );
+localparam signed [EQ_COEFF_WIDTH-1:0] B2_4KHz = signed_eq_coeff( -0.47758854874098844 );
 // 16000Hz notch filter (Q = 4.0)
 localparam signed [EQ_COEFF_WIDTH-1:0] A0_16KHz = signed_eq_coeff( 0.9023208975450513 );
 localparam signed [EQ_COEFF_WIDTH-1:0] A1_16KHz = signed_eq_coeff( 0.902320897545051 );
 localparam signed [EQ_COEFF_WIDTH-1:0] A2_16KHz = signed_eq_coeff( 0.9023208975450513 );
-localparam signed [EQ_COEFF_WIDTH-1:0] B1_16KHz = signed_eq_coeff( -0.902320897545051 );  // -B1 (== A1)
-localparam signed [EQ_COEFF_WIDTH-1:0] B2_16KHz = signed_eq_coeff( -0.8046417950901026 ); // -B2
+localparam signed [EQ_COEFF_WIDTH-1:0] B1_16KHz = signed_eq_coeff( -0.902320897545051 );
+localparam signed [EQ_COEFF_WIDTH-1:0] B2_16KHz = signed_eq_coeff( -0.8046417950901026 );
 
 integer i;
 
