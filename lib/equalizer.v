@@ -47,7 +47,7 @@ module equalizer #(
     );
 
 /*============================================================================*/
-function integer clog2( input [63:0] value ); // Xilinx ISE verilog 2001 support has no $clog2
+function integer clog2( input [63:0] value );
 /*============================================================================*/
     reg [63:0] depth;
     begin
