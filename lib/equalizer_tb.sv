@@ -32,7 +32,7 @@ localparam NR_EQ_BANDS = 8;
 localparam EQ_COEFF_WIDTH = 32;
 
 localparam CHANNEL_WIDTH = $clog2( NR_CHANNELS );
-localparam NR_EQ_BAND_COEFF = 5; // A0, A1, A2, -B1 and -B2
+localparam NR_EQ_BAND_COEFF = 5; // b0, b1, b2, a1 and a2
 localparam NR_EQ_COEFF = NR_CHANNELS * NR_EQ_BANDS * NR_EQ_BAND_COEFF;
 localparam EQ_COEFF_ADDR_WIDTH = $clog2( NR_EQ_COEFF );
 
@@ -165,23 +165,23 @@ function signed [EQ_COEFF_WIDTH-1:0] signed_eq_coeff( input real eq_coeff );
 endfunction
 
 // 1000Hz notch filter (Q = 0.7071)
-localparam signed [EQ_COEFF_WIDTH-1:0] A0_1KHz = signed_eq_coeff( 0.9155020528055772 );
-localparam signed [EQ_COEFF_WIDTH-1:0] A1_1KHz = signed_eq_coeff( -1.8153396116625289 );
-localparam signed [EQ_COEFF_WIDTH-1:0] A2_1KHz = signed_eq_coeff( 0.9155020528055772 );
-localparam signed [EQ_COEFF_WIDTH-1:0] B1_1KHz = signed_eq_coeff( 1.8153396116625289 );
-localparam signed [EQ_COEFF_WIDTH-1:0] B2_1KHz = signed_eq_coeff( -0.8310041056111546 );
+localparam signed [EQ_COEFF_WIDTH-1:0] B0_1KHz = signed_eq_coeff( 0.9155020528055772 );
+localparam signed [EQ_COEFF_WIDTH-1:0] B1_1KHz = signed_eq_coeff( -1.8153396116625289 );
+localparam signed [EQ_COEFF_WIDTH-1:0] B2_1KHz = signed_eq_coeff( 0.9155020528055772 );
+localparam signed [EQ_COEFF_WIDTH-1:0] A1_1KHz = signed_eq_coeff( 1.8153396116625289 );
+localparam signed [EQ_COEFF_WIDTH-1:0] A2_1KHz = signed_eq_coeff( -0.8310041056111546 );
 // 4000Hz notch filter (Q = 0.7071)
-localparam signed [EQ_COEFF_WIDTH-1:0] A0_4KHz = signed_eq_coeff( 0.7387942743704942 );
-localparam signed [EQ_COEFF_WIDTH-1:0] A1_4KHz = signed_eq_coeff( -1.2796292195506773 );
-localparam signed [EQ_COEFF_WIDTH-1:0] A2_4KHz = signed_eq_coeff( 0.7387942743704942 );
-localparam signed [EQ_COEFF_WIDTH-1:0] B1_4KHz = signed_eq_coeff( 1.2796292195506773 );
-localparam signed [EQ_COEFF_WIDTH-1:0] B2_4KHz = signed_eq_coeff( -0.47758854874098844 );
+localparam signed [EQ_COEFF_WIDTH-1:0] B0_4KHz = signed_eq_coeff( 0.7387942743704942 );
+localparam signed [EQ_COEFF_WIDTH-1:0] B1_4KHz = signed_eq_coeff( -1.2796292195506773 );
+localparam signed [EQ_COEFF_WIDTH-1:0] B2_4KHz = signed_eq_coeff( 0.7387942743704942 );
+localparam signed [EQ_COEFF_WIDTH-1:0] A1_4KHz = signed_eq_coeff( 1.2796292195506773 );
+localparam signed [EQ_COEFF_WIDTH-1:0] A2_4KHz = signed_eq_coeff( -0.47758854874098844 );
 // 16000Hz notch filter (Q = 4.0)
-localparam signed [EQ_COEFF_WIDTH-1:0] A0_16KHz = signed_eq_coeff( 0.9023208975450513 );
-localparam signed [EQ_COEFF_WIDTH-1:0] A1_16KHz = signed_eq_coeff( 0.902320897545051 );
-localparam signed [EQ_COEFF_WIDTH-1:0] A2_16KHz = signed_eq_coeff( 0.9023208975450513 );
-localparam signed [EQ_COEFF_WIDTH-1:0] B1_16KHz = signed_eq_coeff( -0.902320897545051 );
-localparam signed [EQ_COEFF_WIDTH-1:0] B2_16KHz = signed_eq_coeff( -0.8046417950901026 );
+localparam signed [EQ_COEFF_WIDTH-1:0] B0_16KHz = signed_eq_coeff( 0.9023208975450513 );
+localparam signed [EQ_COEFF_WIDTH-1:0] B1_16KHz = signed_eq_coeff( 0.902320897545051 );
+localparam signed [EQ_COEFF_WIDTH-1:0] B2_16KHz = signed_eq_coeff( 0.9023208975450513 );
+localparam signed [EQ_COEFF_WIDTH-1:0] A1_16KHz = signed_eq_coeff( -0.902320897545051 );
+localparam signed [EQ_COEFF_WIDTH-1:0] A2_16KHz = signed_eq_coeff( -0.8046417950901026 );
 
 integer i;
 
@@ -193,31 +193,31 @@ initial begin : init_eq_ram_coeff
         case ( i % NR_EQ_BANDS )
             0 : begin
                 // 1st band
-                eq_ram_coeff[(i*NR_EQ_BAND_COEFF) + 0] = A0_1KHz;
-                eq_ram_coeff[(i*NR_EQ_BAND_COEFF) + 1] = A1_1KHz;
-                eq_ram_coeff[(i*NR_EQ_BAND_COEFF) + 2] = A2_1KHz;
-                eq_ram_coeff[(i*NR_EQ_BAND_COEFF) + 3] = B1_1KHz;
-                eq_ram_coeff[(i*NR_EQ_BAND_COEFF) + 4] = B2_1KHz;
+                eq_ram_coeff[( i * NR_EQ_BAND_COEFF ) + 0] = B0_1KHz;
+                eq_ram_coeff[( i * NR_EQ_BAND_COEFF ) + 1] = B1_1KHz;
+                eq_ram_coeff[( i * NR_EQ_BAND_COEFF ) + 2] = B2_1KHz;
+                eq_ram_coeff[( i * NR_EQ_BAND_COEFF ) + 3] = A1_1KHz;
+                eq_ram_coeff[( i * NR_EQ_BAND_COEFF ) + 4] = A2_1KHz;
             end
             1 : begin
                 // 2nd band
-                eq_ram_coeff[( i * NR_EQ_BAND_COEFF ) + 0] = A0_4KHz;
-                eq_ram_coeff[( i * NR_EQ_BAND_COEFF ) + 1] = A1_4KHz;
-                eq_ram_coeff[( i * NR_EQ_BAND_COEFF ) + 2] = A2_4KHz;
-                eq_ram_coeff[( i * NR_EQ_BAND_COEFF ) + 3] = B1_4KHz;
-                eq_ram_coeff[( i * NR_EQ_BAND_COEFF ) + 4] = B2_4KHz;
+                eq_ram_coeff[( i * NR_EQ_BAND_COEFF ) + 0] = B0_4KHz;
+                eq_ram_coeff[( i * NR_EQ_BAND_COEFF ) + 1] = B1_4KHz;
+                eq_ram_coeff[( i * NR_EQ_BAND_COEFF ) + 2] = B2_4KHz;
+                eq_ram_coeff[( i * NR_EQ_BAND_COEFF ) + 3] = A1_4KHz;
+                eq_ram_coeff[( i * NR_EQ_BAND_COEFF ) + 4] = A2_4KHz;
             end
             2 : begin
                 // 3rd band
-                eq_ram_coeff[( i * NR_EQ_BAND_COEFF ) + 0] = A0_16KHz;
-                eq_ram_coeff[( i * NR_EQ_BAND_COEFF ) + 1] = A1_16KHz;
-                eq_ram_coeff[( i * NR_EQ_BAND_COEFF ) + 2] = A2_16KHz;
-                eq_ram_coeff[( i * NR_EQ_BAND_COEFF ) + 3] = B1_16KHz;
-                eq_ram_coeff[( i * NR_EQ_BAND_COEFF ) + 4] = B2_16KHz;
+                eq_ram_coeff[( i * NR_EQ_BAND_COEFF ) + 0] = B0_16KHz;
+                eq_ram_coeff[( i * NR_EQ_BAND_COEFF ) + 1] = B1_16KHz;
+                eq_ram_coeff[( i * NR_EQ_BAND_COEFF ) + 2] = B2_16KHz;
+                eq_ram_coeff[( i * NR_EQ_BAND_COEFF ) + 3] = A1_16KHz;
+                eq_ram_coeff[( i * NR_EQ_BAND_COEFF ) + 4] = A2_16KHz;
             end
             default : begin
                 eq_ram_coeff[( i * NR_EQ_BAND_COEFF ) + 0] = 0;
-                eq_ram_coeff[( i * NR_EQ_BAND_COEFF ) + 0][EQ_COEFF_WIDTH-4] = 1; // set A0 parameter to 1.0 { in a range (-8.0, 8.0) }
+                eq_ram_coeff[( i * NR_EQ_BAND_COEFF ) + 0][EQ_COEFF_WIDTH-4] = 1; // set B0 parameter to 1.0 { in a range (-8.0, 8.0) }
                 eq_ram_coeff[( i * NR_EQ_BAND_COEFF ) + 1] = 0;
                 eq_ram_coeff[( i * NR_EQ_BAND_COEFF ) + 2] = 0;
                 eq_ram_coeff[( i * NR_EQ_BAND_COEFF ) + 3] = 0;
@@ -227,44 +227,44 @@ initial begin : init_eq_ram_coeff
     end
 end
 
-reg signed [EQ_COEFF_WIDTH-1:0] eq_ram_coeff_A0_10[NR_EQ_COEFF-1:0];
+reg signed [EQ_COEFF_WIDTH-1:0] eq_ram_coeff_B0_10[NR_EQ_COEFF-1:0];
 /*============================================================================*/
-initial begin : init_eq_ram_coeff_A0_10
+initial begin : init_eq_ram_coeff_B0_10
 /*============================================================================*/
     for ( i = 0; i < NR_EQ_COEFF; i = i + 1 ) begin
-        eq_ram_coeff_A0_10[i] = 0;
+        eq_ram_coeff_B0_10[i] = 0;
         if (( i % NR_EQ_BAND_COEFF ) == 0 ) begin
-            eq_ram_coeff_A0_10[i][EQ_COEFF_WIDTH-4] = 1; // set every A0 parameter to 1.0 { in a range (-8.0, 8.0) }
+            eq_ram_coeff_B0_10[i][EQ_COEFF_WIDTH-4] = 1; // set every B0 parameter to 1.0 { in a range (-8.0, 8.0) }
         end
     end
 end
 
-reg signed [EQ_COEFF_WIDTH-1:0] eq_ram_coeff_A0_15[NR_EQ_COEFF-1:0];
+reg signed [EQ_COEFF_WIDTH-1:0] eq_ram_coeff_B0_15[NR_EQ_COEFF-1:0];
 /*============================================================================*/
-initial begin : init_eq_ram_coeff_A0_15
+initial begin : init_eq_ram_coeff_B0_15
 /*============================================================================*/
     for ( i = 0; i < NR_EQ_COEFF; i = i + 1 ) begin
-        eq_ram_coeff_A0_15[i] = 0;
+        eq_ram_coeff_B0_15[i] = 0;
         if ( !i ) begin
-            eq_ram_coeff_A0_15[i][EQ_COEFF_WIDTH-5] = 1; // set every A0 parameter to 1.5 { in a range (-8.0, 8.0) }
+            eq_ram_coeff_B0_15[i][EQ_COEFF_WIDTH-5] = 1; // set every B0 parameter to 1.5 { in a range (-8.0, 8.0) }
         end
         if (( i % NR_EQ_BAND_COEFF ) == 0 ) begin
-            eq_ram_coeff_A0_15[i][EQ_COEFF_WIDTH-4] = 1; // set all other A0 parameter to 1.0 { in a range (-8.0, 8.0) }
+            eq_ram_coeff_B0_15[i][EQ_COEFF_WIDTH-4] = 1; // set all other B0 parameter to 1.0 { in a range (-8.0, 8.0) }
         end
     end
 end
 
-reg signed [EQ_COEFF_WIDTH-1:0] eq_ram_coeff_A0_05[NR_EQ_COEFF-1:0];
+reg signed [EQ_COEFF_WIDTH-1:0] eq_ram_coeff_B0_05[NR_EQ_COEFF-1:0];
 /*============================================================================*/
-initial begin : init_eq_ram_coeff_A0_05
+initial begin : init_eq_ram_coeff_B0_05
 /*============================================================================*/
     for ( i = 0; i < NR_EQ_COEFF; i = i + 1 ) begin
-        eq_ram_coeff_A0_05[i] = 0;
+        eq_ram_coeff_B0_05[i] = 0;
         if ( !i ) begin
-            eq_ram_coeff_A0_05[i][EQ_COEFF_WIDTH-5] = 1; // set every A0 parameter to 0.5 { in a range (-8.0, 8.0) }
+            eq_ram_coeff_B0_05[i][EQ_COEFF_WIDTH-5] = 1; // set every B0 parameter to 0.5 { in a range (-8.0, 8.0) }
         end
         else if (( i % NR_EQ_BAND_COEFF ) == 0 ) begin
-            eq_ram_coeff_A0_05[i][EQ_COEFF_WIDTH-4] = 1; // set all other A0 parameter to 1.0 { in a range (-8.0, 8.0) }
+            eq_ram_coeff_B0_05[i][EQ_COEFF_WIDTH-4] = 1; // set all other B0 parameter to 1.0 { in a range (-8.0, 8.0) }
         end
     end
 end
@@ -279,13 +279,13 @@ always @(posedge clk) begin : eq_coeff_access
             i_eq_coeff <= eq_ram_coeff[eq_coeff_addr];
         end
         2'b01 : begin
-            i_eq_coeff <= eq_ram_coeff_A0_10[eq_coeff_addr];
+            i_eq_coeff <= eq_ram_coeff_B0_10[eq_coeff_addr];
         end
         2'b10 : begin
-            i_eq_coeff <= eq_ram_coeff_A0_15[eq_coeff_addr];
+            i_eq_coeff <= eq_ram_coeff_B0_15[eq_coeff_addr];
         end
         2'b11 : begin
-            i_eq_coeff <= eq_ram_coeff_A0_05[eq_coeff_addr];
+            i_eq_coeff <= eq_ram_coeff_B0_05[eq_coeff_addr];
         end
     endcase
 end
