@@ -63,7 +63,7 @@ function integer clog2( input [63:0] value ); // Xilinx ISE verilog 2001 support
     end
 endfunction
 
-localparam NR_EQ_BAND_COEFF = 5; // A0, A1, A2, -B1 and -B2
+localparam NR_EQ_BAND_COEFF = 5; // a0, a1, a2, b1 and b2
 localparam NR_EQ_COEFF = NR_CHANNELS * NR_EQ_BANDS * NR_EQ_BAND_COEFF;
 localparam EQ_COEFF_ADDR_WIDTH = clog2( NR_EQ_COEFF );
 localparam CHANNEL_WIDTH = clog2( NR_CHANNELS );
@@ -82,16 +82,10 @@ output wire m_tvalid;
 input  wire m_tready;
 output wire overflow;
 
-// Feed forward coefficients
-localparam A0 = 1;
-localparam A1 = 2;
-localparam A2 = 3;
-// Feed backward coefficients
-localparam B1 = 4;
-localparam B2 = 5;
+localparam NB_B = 3; // Number of feed forward coefficients
 
 localparam EQ_SAMPLE_WIDTH = EQ_COEFF_WIDTH;
-localparam NR_EQ_BAND_ELEMENTS = ( A2 * ( NR_EQ_BANDS + 1 )); // +1 for last Y0, Y1, Y2
+localparam NR_EQ_BAND_ELEMENTS = ( NB_B * ( NR_EQ_BANDS + 1 )); // +1 for last Y0, Y1, Y2
 localparam NR_EQ_ELEMENTS = NR_CHANNELS * NR_EQ_BAND_ELEMENTS;
 localparam NR_EQ_ELEMENTS_WIDTH = clog2( NR_EQ_ELEMENTS );
 
@@ -121,19 +115,19 @@ reg store_sum = 0;
 reg calc_eq_band = 0;
 reg multiply = 0;
 reg accumulate = 0;
-reg a0 = 0;
-reg a1 = 0;
-reg a2 = 0;
+reg b0 = 0;
 reg b1 = 0;
 reg b2 = 0;
-reg b2_done = 0;
+reg a1 = 0;
+reg a2 = 0;
+reg a2_done = 0;
 reg signed [( 2 * EQ_COEFF_WIDTH )-1:0] sum = 0;
 reg signed [( 2 * EQ_COEFF_WIDTH )-1:0] product = 0;
 reg signed [EQ_SAMPLE_WIDTH-1:0] eq_ram[NR_EQ_ELEMENTS-1:0];
 
 integer i = 0;
 
-localparam NOISE_BITS = EQ_COEFF_WIDTH - INPUT_WIDTH-EQ_HEADROOM_BITS;
+localparam NOISE_BITS = EQ_COEFF_WIDTH - INPUT_WIDTH - EQ_HEADROOM_BITS;
 localparam COEFF_HEADROOM = 3; // coefficient gain range = -8.0 to 8.0 (3-bit headroom)
 localparam EQ_SUM_HEADROOM = COEFF_HEADROOM + 1; // +1 for duplicate sign bit (signed multiplication)
 localparam MAX_EQ_COEFF_WIDTH = 36;
@@ -177,7 +171,7 @@ always @(posedge clk) begin : biquad // Equalizer biquad algorithm
     // eq_ram_wr ... multiply are pulses - set to 1 for one clock cycle!
     eq_ram_wr <= 0;
     out_tvalid_i <= 0;
-    b2_done <= 0;
+    a2_done <= 0;
     init <= 0;
     multiply <= 0;
     if ( s_tvalid && s_tready_i && ( s_tid < NR_CHANNELS )) begin
@@ -195,7 +189,7 @@ always @(posedge clk) begin : biquad // Equalizer biquad algorithm
     end
     if ( init ) begin
         Y0_index <= eq_ram_rd_index;
-        Y0_out_index <= eq_ram_rd_index + ( A2 * NR_EQ_BANDS );
+        Y0_out_index <= eq_ram_rd_index + ( NB_B * NR_EQ_BANDS );
         eq_ram_rd_index <= eq_ram_rd_index + 1;
         first_iteration <= 1;
     end
@@ -204,7 +198,7 @@ always @(posedge clk) begin : biquad // Equalizer biquad algorithm
         eq_ram_wr_index <= eq_ram_rd_index;
         eq_ram_wr_data <= eq_ram_rd_data;
         eq_ram_wr <= 1;
-        if ( b2_done ) begin // Last band MAC operation done, rounding might cause negative sign could become positive!
+        if ( a2_done ) begin // Last band MAC operation done, rounding might cause negative sign could become positive!
             // EQ band sum 2*EQ_COEFF_WIDTH => EQ sample EQ_COEFF_WIDTH summed bands to zero rounding
             sum <= sum + {{( EQ_COEFF_WIDTH + EQ_SUM_HEADROOM ){1'b0}}, {( EQ_COEFF_WIDTH - EQ_SUM_HEADROOM ){ sum[( EQ_SAMPLE_WIDTH * 2 )-1] }}};
         end
@@ -237,7 +231,7 @@ always @(posedge clk) begin : biquad // Equalizer biquad algorithm
     end
     calc_eq_band <= store_sum;
     if ( calc_eq_band ) begin
-        Y0_index <= Y0_index + A2;
+        Y0_index <= Y0_index + NB_B;
         sum <= 0;
         if ( eq_ram_rd_index == Y0_out_index ) begin
             out_tdata_r <= eq_ram_wr_data;
@@ -247,7 +241,7 @@ always @(posedge clk) begin : biquad // Equalizer biquad algorithm
         end
         else begin
             multiply <= 1;
-            a0 <= 1;
+            b0 <= 1;
             eq_ram_rd_index <= eq_ram_rd_index + 1;
         end
     end
@@ -256,7 +250,7 @@ always @(posedge clk) begin : biquad // Equalizer biquad algorithm
             i_eq_coeff_addr <= i_eq_coeff_addr + 1;
         end
         product <= $signed( eq_coeff ) * eq_ram_wr_data;
-        if ( b2 ) begin
+        if ( a2 ) begin
             eq_ram_rd_index <= Y0_index;
         end
         else begin
@@ -267,19 +261,19 @@ always @(posedge clk) begin : biquad // Equalizer biquad algorithm
     if ( accumulate ) begin
         sum <= sum + product;
         eq_ram_wr_data <= eq_ram_rd_data;
-        if ( b2 ) begin
+        if ( a2 ) begin
             eq_ram_rd_index <= eq_ram_rd_index + 1;
             store <= 1;
         end
         else begin
             multiply <= 1;
         end
-        a0 <= 0; // Reset calc_eq_band assignment!
-        a1 <= a0;
-        a2 <= a1;
-        b1 <= a2;
+        b0 <= 0; // Reset calc_eq_band assignment!
+        b1 <= b0;
         b2 <= b1;
-        b2_done <= b2;
+        a1 <= b2;
+        a2 <= a1;
+        a2_done <= a2;
     end
     // Reset
     if ( !rst_n ) begin
