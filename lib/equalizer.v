@@ -123,6 +123,7 @@ reg a2 = 0;
 reg a2_done = 0;
 reg signed [( 2 * EQ_COEFF_WIDTH )-1:0] sum = 0;
 reg signed [( 2 * EQ_COEFF_WIDTH )-1:0] product = 0;
+(* ram_style = "block" *)
 reg signed [EQ_SAMPLE_WIDTH-1:0] eq_ram[NR_EQ_ELEMENTS-1:0];
 
 integer i = 0;
@@ -214,14 +215,13 @@ always @(posedge clk) begin : biquad // Equalizer biquad algorithm
         eq_ram_rd_index <= Y0_index;
         eq_ram_wr_index <= Y0_index;
         eq_ram_wr_data[EQ_SAMPLE_WIDTH-1] <= sum[( EQ_SAMPLE_WIDTH * 2 )-1];
-        if ( !sum[( EQ_SAMPLE_WIDTH * 2 )-1] && ( sum[(( EQ_SAMPLE_WIDTH * 2 )- 2 ):( EQ_SAMPLE_WIDTH * 2) - EQ_SUM_HEADROOM - 1] != ALL_ZERO[EQ_SUM_HEADROOM-1:0])) begin
-            eq_ram_wr_data[EQ_SAMPLE_WIDTH-2:0] <= ALL_ONES;
+        eq_ram_wr_data[EQ_SAMPLE_WIDTH-2:0] <= sum[(( EQ_SAMPLE_WIDTH * 2 ) - EQ_SUM_HEADROOM - 2 ):( EQ_SAMPLE_WIDTH-EQ_SUM_HEADROOM )];
+        // Check for positive and negative overflow
+        if ( !sum[( EQ_SAMPLE_WIDTH * 2 )-1] && |sum[(( EQ_SAMPLE_WIDTH * 2 )- 2 ):( EQ_SAMPLE_WIDTH * 2 ) - EQ_SUM_HEADROOM - 1] ) begin
+            eq_ram_wr_data[EQ_SAMPLE_WIDTH-2:0] <= ALL_ONES; // Positive maximum
         end
-        else if ( sum[( EQ_SAMPLE_WIDTH * 2 )-1] && ( sum[(( EQ_SAMPLE_WIDTH * 2 ) - 2 ):( EQ_SAMPLE_WIDTH * 2 ) - EQ_SUM_HEADROOM - 1] != ALL_ONES[EQ_SUM_HEADROOM-1:0])) begin
-            eq_ram_wr_data[EQ_SAMPLE_WIDTH-2:0] <= ALL_ZERO;
-        end
-        else begin
-            eq_ram_wr_data[EQ_SAMPLE_WIDTH-2:0] <= sum[(( EQ_SAMPLE_WIDTH * 2 ) - EQ_SUM_HEADROOM - 2 ):( EQ_SAMPLE_WIDTH-EQ_SUM_HEADROOM )];
+        if ( sum[( EQ_SAMPLE_WIDTH * 2 )-1] && !( &sum[(( EQ_SAMPLE_WIDTH * 2 ) - 2 ):( EQ_SAMPLE_WIDTH * 2 ) - EQ_SUM_HEADROOM - 1] )) begin
+            eq_ram_wr_data[EQ_SAMPLE_WIDTH-2:0] <= ALL_ZERO; // Negative maximum
         end
         if ( first_iteration ) begin
             eq_ram_wr_data <= input_data;
@@ -295,21 +295,20 @@ end
 always @(posedge clk) begin : output_process // Equalizer output, check for overflow and rounding
 /*============================================================================*/
     m_tvalid_i <= m_tvalid_i & ~m_tready;
-    overflow_i <= out_tvalid_i;
+    overflow_i <= 0;
     if ( out_tvalid_i ) begin
         // EQ_SAMPLE_WIDTH => INPUT_WIDTH to zero rounding, negative sign could become positive!
         out_tdata_c = out_tdata_r + {{( EQ_COEFF_WIDTH - INPUT_WIDTH ){1'b0}}, {( NOISE_BITS ){ out_tdata_r[EQ_SAMPLE_WIDTH-1] }}};
         m_tdata_i[INPUT_WIDTH-1] <= out_tdata_c[EQ_SAMPLE_WIDTH-1]; // Sign bit
+        m_tdata_i[INPUT_WIDTH-2:0] <= out_tdata_c[EQ_SAMPLE_WIDTH-EQ_HEADROOM_BITS-2:NOISE_BITS];
         // Check for positive and negative overflow
-        if ( !out_tdata_c[EQ_SAMPLE_WIDTH-1] && out_tdata_c[EQ_SAMPLE_WIDTH-2:EQ_SAMPLE_WIDTH-EQ_HEADROOM_BITS-1] != ALL_ZERO[EQ_HEADROOM_BITS-1:0] ) begin
+        if ( !out_tdata_c[EQ_SAMPLE_WIDTH-1] && |out_tdata_c[EQ_SAMPLE_WIDTH-2:EQ_SAMPLE_WIDTH-EQ_HEADROOM_BITS-1] ) begin
             m_tdata_i[INPUT_WIDTH-2:0] <= ALL_ONES; // Positive maximum
+            overflow_i <= 1;
         end
-        else if ( out_tdata_c[EQ_SAMPLE_WIDTH-1] && out_tdata_c[EQ_SAMPLE_WIDTH-2:EQ_SAMPLE_WIDTH-EQ_HEADROOM_BITS-1] != ALL_ONES[EQ_HEADROOM_BITS-1:0] ) begin
+        if ( out_tdata_c[EQ_SAMPLE_WIDTH-1] && !( &out_tdata_c[EQ_SAMPLE_WIDTH-2:EQ_SAMPLE_WIDTH-EQ_HEADROOM_BITS-1] )) begin
             m_tdata_i[INPUT_WIDTH-2:0] <= ALL_ZERO; // Negative maximum
-        end
-        else begin
-            m_tdata_i[INPUT_WIDTH-2:0] <= out_tdata_c[EQ_SAMPLE_WIDTH-EQ_HEADROOM_BITS-2:NOISE_BITS];
-            overflow_i <= 0;
+            overflow_i <= 1;
         end
         m_tvalid_i <= 1;
     end
