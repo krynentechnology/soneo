@@ -17,7 +17,6 @@
  *           https://www.gnu.org/licenses/gpl-3.0.html
  *
  *  Description: Equalizer module simulation
- *
  */
 
 `resetall
@@ -42,14 +41,14 @@ reg mute = 0;
 
 wire [EQ_COEFF_WIDTH-1:0] eq_coeff;
 wire [EQ_COEFF_ADDR_WIDTH-1:0] eq_coeff_addr;
-wire [INPUT_WIDTH-1:0] s_tdata;
-wire [CHANNEL_WIDTH-1:0] s_tid;
-wire s_tvalid;
-wire s_tready;
-wire [INPUT_WIDTH-1:0] m_tdata;
-wire [CHANNEL_WIDTH-1:0] m_tid;
-wire m_tvalid;
-reg  m_tready = 0;
+wire [INPUT_WIDTH-1:0] s_eq_d;
+wire [CHANNEL_WIDTH-1:0] s_eq_ch;
+wire s_eq_dv;
+wire s_eq_dr;
+wire [INPUT_WIDTH-1:0] m_eq_d;
+wire [CHANNEL_WIDTH-1:0] m_eq_ch;
+wire m_eq_dv;
+reg  m_eq_dr = 0;
 wire overflow;
 
 localparam [INPUT_WIDTH-1:0] ZERO = 0; // 00000...
@@ -59,14 +58,14 @@ equalizer eq1(
     .rst_n(rst_n),
     .eq_coeff(eq_coeff),
     .eq_coeff_addr(eq_coeff_addr),
-    .s_tdata(mute ? ZERO : s_tdata),
-    .s_tid(s_tid),
-    .s_tvalid(s_tvalid),
-    .s_tready(s_tready),
-    .m_tdata(m_tdata),
-    .m_tid(m_tid),
-    .m_tvalid(m_tvalid),
-    .m_tready(m_tready),
+    .s_eq_d(mute ? ZERO : s_eq_d),
+    .s_eq_ch(s_eq_ch),
+    .s_eq_dv(s_eq_dv),
+    .s_eq_dr(s_eq_dr),
+    .m_eq_d(m_eq_d),
+    .m_eq_ch(m_eq_ch),
+    .m_eq_dv(m_eq_dv),
+    .m_eq_dr(m_eq_dr),
     .overflow(overflow));
 
 defparam eq1.NR_CHANNELS = NR_CHANNELS;
@@ -89,7 +88,7 @@ initial begin
     #1000    // 1us
     $display( "Set A0 factor = 1.0" );
     rst_n = 1;
-    m_tready = 1;
+    m_eq_dr = 1;
     #1000000 // 1ms
     eq_coeff_sel = 0;
     #1000000 // 1ms
@@ -119,29 +118,29 @@ reg signed [INPUT_WIDTH-1:0] data_eq_out_2 = 0;
 /*============================================================================*/
 always @(posedge clk) begin : collect_eq_data
 /*============================================================================*/
-    if ( s_tvalid  ) begin
-        case ( s_tid )
+    if ( s_eq_dv  ) begin
+        case ( s_eq_ch )
             0 : begin
-                data_eq_in_0 <= s_tdata;
+                data_eq_in_0 <= s_eq_d;
             end
             1 : begin
-                data_eq_in_1 <= s_tdata;
+                data_eq_in_1 <= s_eq_d;
             end
             2 : begin
-                data_eq_in_2 <= s_tdata;
+                data_eq_in_2 <= s_eq_d;
             end
         endcase
     end
-    if ( m_tvalid ) begin
-        case ( m_tid )
+    if ( m_eq_dv ) begin
+        case ( m_eq_ch )
             0 : begin
-                data_eq_out_0 <= m_tdata;
+                data_eq_out_0 <= m_eq_d;
             end
             1 : begin
-                data_eq_out_1 <= m_tdata;
+                data_eq_out_1 <= m_eq_d;
             end
             2 : begin
-                data_eq_out_2 <= m_tdata;
+                data_eq_out_2 <= m_eq_d;
             end
         endcase
     end
@@ -291,10 +290,10 @@ end
 assign eq_coeff = i_eq_coeff;
 
 ////////////////// Sine generator for NR_CHANNELS-1 channels ///////////////////
-reg signed [INPUT_WIDTH-1:0] sg_tdata = 0;
-reg signed [INPUT_WIDTH-1:0] sg_tdata_c;
-reg [CHANNEL_WIDTH-1:0] sg_tid = 0;
-reg sg_tvalid = 0;
+reg signed [INPUT_WIDTH-1:0] sg_d = 0;
+reg signed [INPUT_WIDTH-1:0] sg_d_c;
+reg [CHANNEL_WIDTH-1:0] sg_ch = 0;
+reg sg_dv = 0;
 
 localparam real MATH_2_PI = 2 * 3.14159265358979323846;
 localparam integer SAMPLE_FREQUENCY = 48000;
@@ -315,32 +314,32 @@ end
 /*============================================================================*/
 always @(posedge clk) begin : sine_generator
 /*============================================================================*/
-    sg_tvalid <= sg_tvalid & ~s_tready;
-    if ( !sg_tvalid ) begin
-        sg_tdata_c = MULTIPLIER * $sin( sine_counter[sg_tid] );
-        sg_tdata <= $signed( sg_tdata_c );
-        sine_counter[sg_tid] <= sine_counter[sg_tid] + step[sg_tid];
-        sg_tvalid <= 1;
+    sg_dv <= sg_dv & ~s_eq_dr;
+    if ( !sg_dv ) begin
+        sg_d_c = MULTIPLIER * $sin( sine_counter[sg_ch] );
+        sg_d <= $signed( sg_d_c );
+        sine_counter[sg_ch] <= sine_counter[sg_ch] + step[sg_ch];
+        sg_dv <= 1;
     end
-    else if ( s_tready ) begin
-        sg_tid <= sg_tid + 1;
-        if (( NR_CHANNELS - 1 ) == sg_tid ) begin
-            sg_tid <= 0;
+    else if ( s_eq_dr ) begin
+        sg_ch <= sg_ch + 1;
+        if (( NR_CHANNELS - 1 ) == sg_ch ) begin
+            sg_ch <= 0;
         end
     end
     if ( !rst_n ) begin
         sine_counter[0] <= 0;
         sine_counter[1] <= 0;
         sine_counter[2] <= 0;
-        sg_tdata <= 0;
-        sg_tvalid <= 0;
-        sg_tid <= 0;
+        sg_d <= 0;
+        sg_dv <= 0;
+        sg_ch <= 0;
     end
 end
 
-assign s_tdata = sg_tdata;
-assign s_tid = sg_tid;
-assign s_tvalid = sg_tvalid;
+assign s_eq_d = sg_d;
+assign s_eq_ch = sg_ch;
+assign s_eq_dv = sg_dv;
 
 /*============================================================================*/
 initial begin // Generate VCD file for GTKwave

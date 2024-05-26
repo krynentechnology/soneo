@@ -42,15 +42,15 @@ module equalizer #(
     (
     clk, rst_n, // Synchronous reset, high when clk is stable!
     eq_coeff, eq_coeff_addr,
-    s_tdata, s_tid, s_tvalid, s_tready,
-    m_tdata, m_tid, m_tvalid, m_tready,
+    s_eq_d, s_eq_ch, s_eq_dv, s_eq_dr, // _d = data, _ch = channel id
+    m_eq_d, m_eq_ch, m_eq_dv, m_eq_dr, // _dv = data valid, _dr = data ready
     overflow
     );
 
 /*============================================================================*/
-function integer clog2( input [63:0] value );
+function integer clog2( input [15:0] value ); // Maximum value ( 2 ** 16 ) - 1!
 /*============================================================================*/
-    reg [63:0] depth;
+    reg [15:0] depth;
     begin
         clog2 = 1; // Minimum bit width
         if ( value > 1 ) begin
@@ -73,14 +73,14 @@ input  wire clk;
 input  wire rst_n;
 input  wire [EQ_COEFF_WIDTH-1:0] eq_coeff;
 output wire [EQ_COEFF_ADDR_WIDTH-1:0] eq_coeff_addr;
-input  wire [INPUT_WIDTH-1:0] s_tdata;
-input  wire [CHANNEL_WIDTH-1:0] s_tid;
-input  wire s_tvalid;
-output wire s_tready;
-output wire [INPUT_WIDTH-1:0] m_tdata;
-output wire [CHANNEL_WIDTH-1:0] m_tid;
-output wire m_tvalid;
-input  wire m_tready;
+input  wire [INPUT_WIDTH-1:0] s_eq_d;
+input  wire [CHANNEL_WIDTH-1:0] s_eq_ch;
+input  wire s_eq_dv;
+output wire s_eq_dr;
+output wire [INPUT_WIDTH-1:0] m_eq_d;
+output wire [CHANNEL_WIDTH-1:0] m_eq_ch;
+output wire m_eq_dv;
+input  wire m_eq_dr;
 output wire overflow;
 
 localparam NB_FFC = 3; // Number of feed forward coefficients
@@ -90,16 +90,16 @@ localparam NR_EQ_BAND_ELEMENTS = ( NB_FFC * ( NR_EQ_BANDS + 1 )); // +1 for last
 localparam NR_EQ_ELEMENTS = NR_CHANNELS * NR_EQ_BAND_ELEMENTS;
 localparam NR_EQ_ELEMENTS_WIDTH = clog2( NR_EQ_ELEMENTS );
 
-reg s_tready_i = 1;
-reg [CHANNEL_WIDTH-1:0] i_tid = 0;
+reg s_eq_dr_i = 1;
+reg [CHANNEL_WIDTH-1:0] i_ch = 0;
 reg [EQ_COEFF_ADDR_WIDTH-1:0] i_eq_coeff_addr = 0;
-reg [INPUT_WIDTH-1:0] m_tdata_i = 0;
-reg [CHANNEL_WIDTH-1:0] m_tid_i = 0;
-reg m_tvalid_i = 0;
+reg [INPUT_WIDTH-1:0] m_eq_d_i = 0;
+reg [CHANNEL_WIDTH-1:0] m_eq_ch_i = 0;
+reg m_eq_dv_i = 0;
 reg overflow_i = 0;
-reg out_tvalid_i = 0;
-reg signed [EQ_SAMPLE_WIDTH-1:0] out_tdata_r = 0;
-reg signed [EQ_SAMPLE_WIDTH-1:0] out_tdata_c = 0;
+reg out_dv_i = 0;
+reg signed [EQ_SAMPLE_WIDTH-1:0] out_d_r = 0;
+reg signed [EQ_SAMPLE_WIDTH-1:0] out_d_c = 0;
 reg signed [EQ_SAMPLE_WIDTH-1:0] input_data = 0;
 reg signed [EQ_SAMPLE_WIDTH-1:0] eq_ram_wr_data = 0;
 reg signed [EQ_SAMPLE_WIDTH-1:0] eq_ram_rd_data = 0;
@@ -172,21 +172,21 @@ always @(posedge clk) begin : biquad // Equalizer biquad algorithm
 /*============================================================================*/
     // eq_ram_wr ... multiply are pulses - set to 1 for one clock cycle!
     eq_ram_wr <= 0;
-    out_tvalid_i <= 0;
+    out_dv_i <= 0;
     b2_done <= 0;
     init <= 0;
     multiply <= 0;
-    if ( s_tvalid && s_tready_i && ( s_tid < NR_CHANNELS )) begin
+    if ( s_eq_dv && s_eq_dr_i && ( s_eq_ch < NR_CHANNELS )) begin
         // Fit AUDIO_WIDTH sample into EQ_COEFF_WIDTH equalizer sample
-        input_data[EQ_COEFF_WIDTH-1:NOISE_BITS] <= $signed( s_tdata );
+        input_data[EQ_COEFF_WIDTH-1:NOISE_BITS] <= $signed( s_eq_d );
         input_data[NOISE_BITS-1:0] <= 0;
-        i_tid <= s_tid;
+        i_ch <= s_eq_ch;
         for ( i = 0; i < NR_CHANNELS; i = i + 1 )
-            if ( i == s_tid ) begin
+            if ( i == s_eq_ch ) begin
                 i_eq_coeff_addr <= NR_EQ_BANDS * NR_EQ_BAND_COEFF * i;
                 eq_ram_rd_index <= NR_EQ_BAND_ELEMENTS * i;
             end
-        s_tready_i <= 0;
+        s_eq_dr_i <= 0;
         init <= 1;
     end
     if ( init ) begin
@@ -235,10 +235,10 @@ always @(posedge clk) begin : biquad // Equalizer biquad algorithm
         Y0_index <= Y0_index + NB_FFC;
         sum <= 0;
         if ( eq_ram_rd_index == Y0_out_index ) begin
-            out_tdata_r <= eq_ram_wr_data;
-            m_tid_i <= i_tid;
-            out_tvalid_i <= 1;
-            s_tready_i <= 1;
+            out_d_r <= eq_ram_wr_data;
+            m_eq_ch_i <= i_ch;
+            out_dv_i <= 1;
+            s_eq_dr_i <= 1;
         end
         else begin
             multiply <= 1;
@@ -285,9 +285,9 @@ always @(posedge clk) begin : biquad // Equalizer biquad algorithm
         calc_eq_band <= 0;
         multiply <= 0;
         accumulate <= 0;
-        s_tready_i <= 1;
-        m_tdata_i <= 0;
-        m_tid_i <= 0;
+        s_eq_dr_i <= 1;
+        m_eq_d_i <= 0;
+        m_eq_ch_i <= 0;
         sum <= 0;
     end
 end
@@ -295,31 +295,31 @@ end
 /*============================================================================*/
 always @(posedge clk) begin : output_process // Equalizer output, check for overflow and rounding
 /*============================================================================*/
-    m_tvalid_i <= m_tvalid_i & ~m_tready;
+    m_eq_dv_i <= m_eq_dv_i & ~m_eq_dr;
     overflow_i <= 0;
-    if ( out_tvalid_i ) begin
+    if ( out_dv_i ) begin
         // EQ_SAMPLE_WIDTH => INPUT_WIDTH to zero rounding, negative sign could become positive!
-        out_tdata_c = out_tdata_r + {{( EQ_COEFF_WIDTH - INPUT_WIDTH ){1'b0}}, {( NOISE_BITS ){ out_tdata_r[EQ_SAMPLE_WIDTH-1] }}};
-        m_tdata_i[INPUT_WIDTH-1] <= out_tdata_c[EQ_SAMPLE_WIDTH-1]; // Sign bit
-        m_tdata_i[INPUT_WIDTH-2:0] <= out_tdata_c[EQ_SAMPLE_WIDTH-EQ_HEADROOM_BITS-2:NOISE_BITS];
+        out_d_c = out_d_r + {{( EQ_COEFF_WIDTH - INPUT_WIDTH ){1'b0}}, {( NOISE_BITS ){ out_d_r[EQ_SAMPLE_WIDTH-1] }}};
+        m_eq_d_i[INPUT_WIDTH-1] <= out_d_c[EQ_SAMPLE_WIDTH-1]; // Sign bit
+        m_eq_d_i[INPUT_WIDTH-2:0] <= out_d_c[EQ_SAMPLE_WIDTH-EQ_HEADROOM_BITS-2:NOISE_BITS];
         // Check for positive and negative overflow
-        if ( !out_tdata_c[EQ_SAMPLE_WIDTH-1] && |out_tdata_c[EQ_SAMPLE_WIDTH-2:EQ_SAMPLE_WIDTH-EQ_HEADROOM_BITS-1] ) begin
-            m_tdata_i[INPUT_WIDTH-2:0] <= ALL_ONES; // Positive maximum
+        if ( !out_d_c[EQ_SAMPLE_WIDTH-1] && |out_d_c[EQ_SAMPLE_WIDTH-2:EQ_SAMPLE_WIDTH-EQ_HEADROOM_BITS-1] ) begin
+            m_eq_d_i[INPUT_WIDTH-2:0] <= ALL_ONES; // Positive maximum
             overflow_i <= 1;
         end
-        if ( out_tdata_c[EQ_SAMPLE_WIDTH-1] && !( &out_tdata_c[EQ_SAMPLE_WIDTH-2:EQ_SAMPLE_WIDTH-EQ_HEADROOM_BITS-1] )) begin
-            m_tdata_i[INPUT_WIDTH-2:0] <= ALL_ZERO; // Negative maximum
+        if ( out_d_c[EQ_SAMPLE_WIDTH-1] && !( &out_d_c[EQ_SAMPLE_WIDTH-2:EQ_SAMPLE_WIDTH-EQ_HEADROOM_BITS-1] )) begin
+            m_eq_d_i[INPUT_WIDTH-2:0] <= ALL_ZERO; // Negative maximum
             overflow_i <= 1;
         end
-        m_tvalid_i <= 1;
+        m_eq_dv_i <= 1;
     end
 end
 
-assign s_tready = rst_n & s_tready_i;
+assign s_eq_dr = rst_n & s_eq_dr_i;
 assign eq_coeff_addr = i_eq_coeff_addr;
-assign m_tdata = m_tdata_i;
-assign m_tid = m_tid_i;
-assign m_tvalid = m_tvalid_i;
+assign m_eq_d = m_eq_d_i;
+assign m_eq_ch = m_eq_ch_i;
+assign m_eq_dv = m_eq_dv_i;
 assign overflow = overflow_i;
 
 endmodule
