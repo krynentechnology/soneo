@@ -47,13 +47,13 @@ module equalizer #(
     overflow
     );
 
-localparam MAX_CHANNEL_WIDTH = 16;
+localparam MAX_CLOG2_WIDTH = 16;
 /*============================================================================*/
-function integer clog2( input [MAX_CHANNEL_WIDTH-1:0] value );
+function integer clog2( input [MAX_CLOG2_WIDTH-1:0] value );
 /*============================================================================*/
-    reg [MAX_CHANNEL_WIDTH-1:0] depth;
+    reg [MAX_CLOG2_WIDTH-1:0] depth;
     begin
-        clog2 = 0; // Invalid value!
+        clog2 = 1; // Minimum bit width
         if ( value > 1 ) begin
             depth = value - 1;
             clog2 = 0;
@@ -144,6 +144,10 @@ initial begin // Parameter checks
     if (( EQ_COEFF_WIDTH < INPUT_WIDTH ) || ( EQ_COEFF_WIDTH > MAX_EQ_COEFF_WIDTH )) begin
         $display( "EQ_COEFF_WIDTH error" );
         $stop;
+    end
+    if ( NR_EQ_COEFF > (( 2 ** MAX_CLOG2_WIDTH ) - 1 )) begin
+        $display( "NR_EQ_COEFF > (( 2 ** MAX_CLOG2_WIDTH ) - 1 )!" );
+        $finish;
     end
     if ( NOISE_BITS < 0 ) begin
         $display( "NOISE_BITS error" );

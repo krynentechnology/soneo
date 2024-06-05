@@ -16,11 +16,14 @@ if exist .\bin rmdir /Q/S bin
 if not exist .\bin mkdir bin
 cd .\bin
 if "%1"=="" (
+  iverilog -o interpolator_tb.out -I .. ..\interpolator.v ..\interpolator_tb.sv
   iverilog -o equalizer_tb.out -I .. ..\equalizer.v ..\equalizer_tb.sv
 )  
 if not "%1"=="" (
+  iverilog -DGTK_WAVE -o interpolator_tb.out -I .. ..\interpolator.v ..\interpolator_tb.sv
   iverilog -DGTK_WAVE -o equalizer_tb.out -I .. ..\equalizer.v ..\equalizer_tb.sv
 )  
+if exist interpolator_tb.out vvp interpolator_tb.out
 if exist equalizer_tb.out vvp equalizer_tb.out
 cd ..
 :END

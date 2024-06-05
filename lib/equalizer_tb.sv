@@ -85,7 +85,7 @@ initial begin
     mute = 0;
     eq_coeff_sel = 1; // A0 factor = 1.0
     $display( "Equalizer simulation started" );
-    #1000    // 1us
+    #100     // 0.1us
     $display( "Set A0 factor = 1.0" );
     rst_n = 1;
     m_eq_dr = 1;
@@ -188,7 +188,7 @@ reg signed [EQ_COEFF_WIDTH-1:0] eq_ram_coeff[NR_EQ_COEFF-1:0];
 /*============================================================================*/
 initial begin : init_eq_ram_coeff
 /*============================================================================*/
-    for (i = 0; i < ( NR_CHANNELS * NR_EQ_BANDS ); i = i + 1) begin
+    for (i = 0; i < ( NR_CHANNELS * NR_EQ_BANDS ); i = i + 1 ) begin
         case ( i % NR_EQ_BANDS )
             0 : begin
                 // 1st band
@@ -247,7 +247,7 @@ initial begin : init_eq_ram_coeff_A0_15
         if ( 0 == i ) begin
             eq_ram_coeff_A0_15[i][EQ_COEFF_WIDTH-5] = 1; // Set every A0 parameter to 1.5 { in a range (-8.0, 8.0) }
         end
-        if (( i % NR_EQ_BAND_COEFF ) == 0 ) begin
+        if ((i % NR_EQ_BAND_COEFF) == 0) begin
             eq_ram_coeff_A0_15[i][EQ_COEFF_WIDTH-4] = 1; // Set all other A0 parameter to 1.0 { in a range (-8.0, 8.0) }
         end
     end
