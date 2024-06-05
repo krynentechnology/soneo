@@ -3,7 +3,7 @@
 <p>The SONEO library provides general modules for (multi channel) audio DSP:</p>
 <ul>
   <li><a href="lib/equalizer.v">Equalizer</a>  (IIR filter biquad cascaded bands)</li>
-  <li><a href="">Interpolator</a>  (3rd, 4th and 5th order polynomial)</li>
+  <li><a href="lib/interpolator.v">Interpolator</a>  (3rd, 4th and 5th order polynomial)</li>
   <li><a href="">AES-128</a>  (with double speed option)</li>
   <li><a href="">APCM</a>  (Bluetooth A2DP 16-bits audio codec)</li>
 </ul>
