@@ -309,6 +309,8 @@ always @(posedge clk) begin : accumulate_fraction
         end
     end
     if ( !rst_n ) begin
+        s0 <= 0;
+        next_x <= 0;
         step <= 0;
         acc_fraction <= 0;
     end
@@ -602,8 +604,6 @@ always @(posedge clk) begin : calc_y
     end
     if ( !rst_n ) begin
         yx <= 0;
-        step <= 0;
-        acc_fraction <= 0;
         ax_x_6 <= 0;
         ax_x_24 <= 0;
         ax <= 0;
