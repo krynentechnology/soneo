@@ -59,9 +59,6 @@
  *    2p0 = p0 << 1, 3p0 = 2p0 + p0, 6n1 = 3n1 << 1, /2 => >> 1
  *    /6 => * 1/6, division equals multiplication by fraction
  *
- *  Interpolates between p0 and n1 taking the previous (p2, p1) and next (n2)
- *  points into account:
- *
  *    y(x) = ax4 + bx3 + cx2 + dx + e     // 4th order polynomial
  *    y(x) = x(x(x(ax + b) + c) + d) + e
  *       x = -2, -1, 0, 1, 2              // Determine coefficients by substitution
@@ -71,6 +68,9 @@
  *    y(0)  -> p0 = e                         c = (-p2 + 16p1 - 30p0 + 16n1 - n2)/24
  *    y(1)  -> n1 = a + b + c + d + e         d = (p2 - 8p1 + 8n1 - n2)/12
  *    y(2)  -> n2 = 16a + 8b + 4c + 2d + e    e = p0
+ *
+ *  Interpolates between p0 and n1 taking the previous (p2, p1) and next (n2)
+ *  points into account:
  *
  *    float interpolate( float x, p2, p1, p0, n1, n2 )
  *    {
@@ -287,7 +287,7 @@ always @(posedge clk) begin : accumulate_fraction
 /*============================================================================*/
     s0_i <= 0;
     s0_ii <= s0_i;
-    s0 <= s0_ii; // Two clock cycles delay for same so/yx timing as input
+    s0 <= s0_ii; // Two clock cycles delay for same s0/yx timing as input
     next_x <= 0;
     if ( chs_intrp_dv ) begin
         s0 <= ~next_x_c;
