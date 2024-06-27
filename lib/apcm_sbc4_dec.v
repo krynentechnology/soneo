@@ -24,11 +24,10 @@
  *  contain the four 4-bit scale factors (S0/S1/S2/S3). The last two packet
  *  bytes are reserved for an authentication/CRC 16-bit input and is ignored.
  *
- *  The channel number (s_apcm_tid) is not included in the APCM packet, so the
- *  APCM packet should be tranferred in one go (for each channel)! The number of
- *  channels supported depends on the clock speed (clk) and synthesis of the
- *  configured single block RAM size (E.g. 256x36 -> 512x18), which could be
- *  extended to multiple block RAMs (by modification).
+ *  The channel number (s_apcm_tid) is not included in the APCM packet! The
+ *  number of channels supported depends on the clock speed (clk) and synthesis
+ *  of the configured single block RAM size (E.g. 256x36 -> 512x18), which could
+ *  be extended to multiple block RAMs (by modification).
  *  The verification of the authentication/CRC 16-bit value is not part of this
  *  module. AES-128 external decryption is optional (aes_enable = 1) and
  *  required when the eight 16-bit SBC4/APCM processed samples are AES encrypted.
@@ -51,7 +50,7 @@ module apcm_sbc4_dec #(
     (
     clk, rst_n, // Synchronous reset, high when clk is stable!
     s_apcm_tdata, s_apcm_tid, s_apcm_tvalid, s_apcm_tready, // APCM packet input
-    apcm_sop, // APCM start of packet input
+    apcm_sop, // APCM start of packet input, s_apcm_tid should be valid!
     auth_crc, // Authentication/CRC output
     aes_enable, // AES-128 decryption enable input
     m_aes_tdata, m_aes_tid, m_aes_tvalid, m_aes_tready, // 128-bit encrypted output
@@ -111,6 +110,7 @@ reg s_tready_i = 1;
 reg sb_tvalid_i = 0;
 wire sb_tready;
 
+reg [INPUT_WIDTH-1:0] auth_crc_i = 0;
 reg [INPUT_WIDTH-1:0] sb_0_i = 0;
 reg [INPUT_WIDTH-1:0] sb_1_i = 0;
 reg [INPUT_WIDTH-1:0] sb_2_i = 0;
@@ -128,17 +128,22 @@ initial begin : apcm_param_check
 end // apcm_param_check
 
 // RAM apcm data
-integer i;
 localparam NB_APCM_BYTES = 20; // APCM frame size == 160 bits
-reg [7:0] apcm_pre_frame[0:NB_APCM_BYTES-1];
-reg [4:0] apcm_pre_index = 0;
-reg [7:0] apcm_post_frame[0:NB_APCM_BYTES-3];
+localparam APCM_FRAME_SIZE = NB_APCM_BYTES * 8;
+reg [APCM_FRAME_SIZE-1:0] apcm_pre_frame[0:NR_CHANNELS-1];
+reg [4:0] apcm_pre_index[0:NR_CHANNELS-1];
+wire [4:0] apcm_pre_index_c;
+reg [7:0] apcm_post_frame[0:NB_APCM_BYTES-5];
 reg [4:0] apcm_post_index = 0;
+integer i;
 /*============================================================================*/
 initial begin : frame_init // Initialize apcm frame RAM
 /*============================================================================*/
-    for ( i = 0; i < NB_APCM_BYTES; i = i + 1 ) begin
+    for ( i = 0; i < NR_CHANNELS; i = i + 1 ) begin
+        apcm_pre_index[i] = 0;
         apcm_pre_frame[i] = 0;
+    end
+    for ( i = 0; i < NB_APCM_BYTES; i = i + 1 ) begin
         apcm_post_frame[i] = 0;
     end
 end // frame_init
@@ -148,11 +153,8 @@ reg m_aes_tvalid_i = 0;
 reg m_aes_tready_i = 0;
 reg s_aes_tready_i = 0;
 
-assign m_aes_tdata = {
-    apcm_pre_frame[17], apcm_pre_frame[16], apcm_pre_frame[15], apcm_pre_frame[14],
-    apcm_pre_frame[13], apcm_pre_frame[12], apcm_pre_frame[11], apcm_pre_frame[10],
-    apcm_pre_frame[9], apcm_pre_frame[8], apcm_pre_frame[7], apcm_pre_frame[6],
-    apcm_pre_frame[5], apcm_pre_frame[4], apcm_pre_frame[3], apcm_pre_frame[2] };
+assign apcm_pre_index_c = apcm_pre_index[s_apcm_tid];
+assign m_aes_tdata = apcm_pre_frame[s_apcm_tid][143:16];
 assign m_aes_tid = sb_tid_i;
 assign m_aes_tvalid = m_aes_tvalid_i;
 assign s_aes_tready = s_aes_tready_i;
@@ -195,14 +197,14 @@ always @(posedge clk) begin : sbc4_bitpool_dec
     m_aes_tready_i <= m_aes_tready; // Synchronize
     m_aes_tvalid_i <= m_aes_tvalid_i & ~( m_aes_tready_i | m_aes_tready );
     if ( apcm_sop ) begin
-        apcm_pre_index <= 0;
+        apcm_pre_index[s_apcm_tid] <= 0;
     end
     if ( s_apcm_tvalid && s_tready_i && ( s_apcm_tid < NR_CHANNELS )) begin
-        apcm_pre_frame[apcm_pre_index] <= s_apcm_tdata;
-        if (( NB_APCM_BYTES - 1 ) == apcm_pre_index ) begin
+        apcm_pre_frame[s_apcm_tid] <= {s_apcm_tdata, apcm_pre_frame[s_apcm_tid][159:8]};
+        if (( NB_APCM_BYTES - 1 ) == apcm_pre_index_c ) begin
             nb_non_zero_sf <= nb_non_zero_sf_i; // See assignment fit_bitpool_done_c
             nb_non_zero_sf_i <= 0;
-            apcm_pre_index <= 0;
+            apcm_pre_index[s_apcm_tid] <= 0;
             copy_apcm_frame <= 1;
             s_tready_i <= 0;
             sb_tid_i <= s_apcm_tid;
@@ -211,28 +213,27 @@ always @(posedge clk) begin : sbc4_bitpool_dec
         end
         else begin
             non_zero_sf_c = 0;
-            apcm_pre_index = apcm_pre_index + 1;
-            if ( 2 == apcm_pre_index ) begin
-                sf_0_i <= apcm_pre_frame[0][3:0];
-                sf_1_i <= apcm_pre_frame[0][7:4];
+            apcm_pre_index[s_apcm_tid] = apcm_pre_index_c + 1;
+            if ( 0 == apcm_pre_index_c ) begin
+                sf_0_i <= s_apcm_tdata[3:0];
+                sf_1_i <= s_apcm_tdata[7:4];
             end
-            if ( 3 == apcm_pre_index ) begin
-                sf_2_i <= apcm_pre_frame[1][3:0];
-                sf_3_i <= apcm_pre_frame[1][7:4];
+            if ( 1 == apcm_pre_index_c ) begin
+                sf_2_i <= s_apcm_tdata[3:0];
+                sf_3_i <= s_apcm_tdata[7:4];
             end
-            if ( 4 == apcm_pre_index ) non_zero_sf_c = ( 0 == sf_0_i ) ? 0 : 1;
-            if ( 5 == apcm_pre_index ) non_zero_sf_c = ( 0 == sf_1_i ) ? 0 : 1;
-            if ( 6 == apcm_pre_index ) non_zero_sf_c = ( 0 == sf_2_i ) ? 0 : 1;
-            if ( 7 == apcm_pre_index ) non_zero_sf_c = ( 0 == sf_3_i ) ? 0 : 1;
+            if ( 2 == apcm_pre_index_c ) non_zero_sf_c = ( 0 == sf_0_i ) ? 0 : 1;
+            if ( 3 == apcm_pre_index_c ) non_zero_sf_c = ( 0 == sf_1_i ) ? 0 : 1;
+            if ( 4 == apcm_pre_index_c ) non_zero_sf_c = ( 0 == sf_2_i ) ? 0 : 1;
+            if ( 5 == apcm_pre_index_c ) non_zero_sf_c = ( 0 == sf_3_i ) ? 0 : 1;
             if ( non_zero_sf_c ) nb_non_zero_sf_i <= nb_non_zero_sf_i + 1; // Max. 4 for each subband
         end
     end
     if ( copy_apcm_frame && !( fit_bitpool | gen_subband_init | gen_subband_shift | gen_subband_out )) begin
         s_aes_tready_i <= 1;
+        auth_crc_i <= apcm_pre_frame[sb_tid_i][159:144];
         if ( aes_enable_i ) begin // Copy decrypted apcm data
             if ( s_aes_tvalid ) begin
-                apcm_post_frame[17] <= apcm_pre_frame[19];
-                apcm_post_frame[16] <= apcm_pre_frame[18];
                 {
                 apcm_post_frame[15], apcm_post_frame[14],
                 apcm_post_frame[13], apcm_post_frame[12],
@@ -247,9 +248,22 @@ always @(posedge clk) begin : sbc4_bitpool_dec
             end
         end
         else begin
-            for ( i = 2; i < NB_APCM_BYTES; i = i + 1 ) begin
-                apcm_post_frame[i-2] <= apcm_pre_frame[i];
-            end
+            apcm_post_frame[0] <= apcm_pre_frame[sb_tid_i][23:16];
+            apcm_post_frame[1] <= apcm_pre_frame[sb_tid_i][31:24];
+            apcm_post_frame[2] <= apcm_pre_frame[sb_tid_i][39:32];
+            apcm_post_frame[3] <= apcm_pre_frame[sb_tid_i][47:40];
+            apcm_post_frame[4] <= apcm_pre_frame[sb_tid_i][55:48];
+            apcm_post_frame[5] <= apcm_pre_frame[sb_tid_i][63:56];
+            apcm_post_frame[6] <= apcm_pre_frame[sb_tid_i][71:64];
+            apcm_post_frame[7] <= apcm_pre_frame[sb_tid_i][79:72];
+            apcm_post_frame[8] <= apcm_pre_frame[sb_tid_i][87:80];
+            apcm_post_frame[9] <= apcm_pre_frame[sb_tid_i][95:88];
+            apcm_post_frame[10] <= apcm_pre_frame[sb_tid_i][103:96];
+            apcm_post_frame[11] <= apcm_pre_frame[sb_tid_i][111:104];
+            apcm_post_frame[12] <= apcm_pre_frame[sb_tid_i][119:112];
+            apcm_post_frame[13] <= apcm_pre_frame[sb_tid_i][127:120];
+            apcm_post_frame[14] <= apcm_pre_frame[sb_tid_i][135:128];
+            apcm_post_frame[15] <= apcm_pre_frame[sb_tid_i][143:136];
         end
         step_counter <= 0;
         sf_0 <= sf_0_i;
@@ -346,7 +360,7 @@ always @(posedge clk) begin : sbc4_bitpool_dec
                 if ( bits_0 ) begin
                     sb_0_i <= sb_out;
                 end
-                if ( NB_APCM_BYTES-6 == apcm_post_index ) begin
+                if (( NB_APCM_BYTES - 6 ) == apcm_post_index ) begin
                     gen_subband_init <= 0; // Stop subband generation
                 end
                 else begin
@@ -390,7 +404,7 @@ wire [INPUT_WIDTH-1:0] sb_3;
 wire [CHANNEL_WIDTH-1:0] sb_tid;
 wire sb_tvalid;
 
-assign auth_crc = {apcm_post_frame[NB_APCM_BYTES-3], apcm_post_frame[NB_APCM_BYTES-4]};
+assign auth_crc = auth_crc_i;
 assign fit_bitpool_done_c = (( bits_0 + bits_1 + bits_2 + bits_3 ) > ( BIT_POOL - nb_non_zero_sf )) ? 0 : 1;
 assign fit_bitpool_fixed_cycles_c = step_counter[5] & step_counter[4]; // step_counter[5:4] == 2'b11, step_counter == 48
 assign s_apcm_tready = s_tready_i;
