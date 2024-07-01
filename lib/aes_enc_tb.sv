@@ -16,7 +16,9 @@
  *  License: GPL, v3, as defined and found on www.gnu.org,
  *           https://www.gnu.org/licenses/gpl-3.0.html
  *
- *  Description: Test bench for AES encipher keylength 128.
+ *  Description: Test bench for AES encipher keylength 128. Examples from:
+ *
+ *  https://nvlpubs.nist.gov/nistpubs/Legacy/SP/nistspecialpublication800-38a.pdf
  */
 
 `resetall
@@ -61,8 +63,10 @@ defparam aes_enc1.FAST_MODE = 1;
 
 always #5 clk = ~clk; // 100MHz
 
+/*============================================================================*/
 initial begin
-    // NIST 128 bit example key.
+/*============================================================================*/
+    // NIST 128 bit example key rkey[0]. Keys rkey[1:10] are key expansion results.
     rkey[0]  = 128'h2b7e151628aed2a6abf7158809cf4f3c;
     rkey[1]  = 128'ha0fafe1788542cb123a339392a6c7605;
     rkey[2]  = 128'hf2c295f27a96b9435935807a7359f67f;
@@ -92,16 +96,18 @@ begin
 end
 endtask
 
+/*============================================================================*/
 initial begin : test
+/*============================================================================*/
     $display( "AES encipher test started" );
     #100 // 0.1us
-    test_block( 128'h6bc1bee22e409f96e93d7e117393172a, // NIST ECB example
+    test_block( 128'h6bc1bee22e409f96e93d7e117393172a, // NIST ECB example vector
         128'h3ad77bb40d7a3660a89ecaf32466ef97 );
-    test_block( 128'hae2d8a571e03ac9c9eb76fac45af8e51, // NIST ECB example
+    test_block( 128'hae2d8a571e03ac9c9eb76fac45af8e51, // NIST ECB example vector
         128'hf5d3d58503b9699de785895a96fdbaaf );
-    test_block( 128'h30c81c46a35ce411e5fbc1191a0a52ef, // NIST ECB example
+    test_block( 128'h30c81c46a35ce411e5fbc1191a0a52ef, // NIST ECB example vector
         128'h43b1cd7f598ece23881b00e3ed030688 );
-    test_block( 128'hf69f2445df4f9b17ad2b417be66c3710, // NIST ECB example
+    test_block( 128'hf69f2445df4f9b17ad2b417be66c3710, // NIST ECB example vector
         128'h7b0c785e27e8ad3f8223207104725dd4 );
     $finish;
 end // test
