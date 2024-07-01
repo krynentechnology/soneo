@@ -70,7 +70,7 @@ begin
         {mod_x_by_3( x[31:24] ) ^ x[23:16] ^ x[15:8] ^ mod_x_by_2( x[7:0] )}
     };
 end
-endfunction // mixw
+endfunction // pre_mix
 
 /*============================================================================*/
 function [127:0] mix_columns( input [127:0] state );
