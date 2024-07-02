@@ -124,7 +124,7 @@ reg [31:0] rkey2;
 reg [31:0] rkey3;
 wire [31:0] sbox_rkey;
 reg next_rkey = 0;
-reg [7:0] rcon;
+reg [7:0] rcon = 0;
 
 /*============================================================================*/
 always @(*) begin: key_expansion
@@ -164,7 +164,6 @@ wire [31:0] sbox_out_s2;
 reg  [31:0] sbox_s3;
 wire [31:0] sbox_out_s3;
 
-reg [127:0] prev_block;
 reg [127:0] shift_rows_block;
 reg [127:0] mix_columns_block;
 
@@ -178,8 +177,7 @@ always @(*) begin : pre_block
         sbox_s3 = 0;
     end
 
-    prev_block         = block;
-    shift_rows_block   = shift_rows( prev_block );
+    shift_rows_block   = shift_rows( block );
     mix_columns_block  = mix_columns( shift_rows_block );
 
     if ( sbox_out ) begin
@@ -251,7 +249,7 @@ always @(posedge clk) begin : encipher
     end
     if ( next_rkey ) begin
         rkey <= {rkey0, rkey1, rkey2, rkey3};
-        rcon <= mod_x_by_2(rcon);
+        rcon <= mod_x_by_2( rcon );
     end
 end // encipher
 
