@@ -16,7 +16,7 @@
  *  License: GPL, v3, as defined and found on www.gnu.org,
  *           https://www.gnu.org/licenses/gpl-3.0.html
  *
- *  Description: Test bench for AES encipher keylength 128. Examples from:
+ *  Description: Test bench for AES decipher keylength 128. Examples from:
  *
  *  https://nvlpubs.nist.gov/nistpubs/Legacy/SP/nistspecialpublication800-38a.pdf
  */
@@ -26,7 +26,7 @@
 `default_nettype none
 
 /*============================================================================*/
-module aes_enc_tb();
+module aes_dec_tb();
 /*============================================================================*/
 
 reg clk = 0;
@@ -46,9 +46,9 @@ wire [127:0] round_key1;
 
 reg [127:0] rkey[0:10];
 
-aes_enc aes_enc0(
+aes_dec aes_dec0(
     .clk(clk),
-    .s_aes_key(rkey[0]),
+    .s_aes_key(rkey[10]),
     .s_aes_block(s_aes_block),
     .s_aes_valid(s_aes_valid),
     .s_aes_ready(s_aes_ready0),
@@ -57,11 +57,11 @@ aes_enc aes_enc0(
     .round_key(round_key0)
     );
 
-defparam aes_enc0.FAST_MODE = 0;
+defparam aes_dec0.FAST_MODE = 0;
 
-aes_enc aes_enc1(
+aes_dec aes_dec1(
     .clk(clk),
-    .s_aes_key(rkey[0]),
+    .s_aes_key(rkey[10]),
     .s_aes_block(s_aes_block),
     .s_aes_valid(s_aes_valid),
     .s_aes_ready(s_aes_ready1),
@@ -70,14 +70,14 @@ aes_enc aes_enc1(
     .round_key(round_key1)
     );
 
-defparam aes_enc1.FAST_MODE = 1;
+defparam aes_dec1.FAST_MODE = 1;
 
 always #5 clk = ~clk; // 100MHz
 
 /*============================================================================*/
 initial begin
 /*============================================================================*/
-    // NIST 128 bit example key rkey[0]. Keys rkey[1:10] are key expansion results.
+    // NIST 128 bit example key rkey[10]. Keys rkey[9:0] are key expansion results.
     rkey[0]  = 128'h2b7e151628aed2a6abf7158809cf4f3c; // Encipher key
     rkey[1]  = 128'ha0fafe1788542cb123a339392a6c7605;
     rkey[2]  = 128'hf2c295f27a96b9435935807a7359f67f;
@@ -110,18 +110,18 @@ endtask
 /*============================================================================*/
 initial begin : test
 /*============================================================================*/
-    $display( "AES encipher test started" );
+    $display( "AES decipher test started" );
     #100 // 0.1us
-    test_block( 128'h6bc1bee22e409f96e93d7e117393172a, // NIST ECB example vector
-        128'h3ad77bb40d7a3660a89ecaf32466ef97 );
-    test_block( 128'hae2d8a571e03ac9c9eb76fac45af8e51, // NIST ECB example vector
-        128'hf5d3d58503b9699de785895a96fdbaaf );
-    test_block( 128'h30c81c46a35ce411e5fbc1191a0a52ef, // NIST ECB example vector
-        128'h43b1cd7f598ece23881b00e3ed030688 );
-    test_block( 128'hf69f2445df4f9b17ad2b417be66c3710, // NIST ECB example vector
-        128'h7b0c785e27e8ad3f8223207104725dd4 );
-    passed = ( rkey[10] == round_key0 ) && ( rkey[10] == round_key1 );
-    $display( "Round [10] key (decipher key) test %s", passed ? "passed" : "failed" );
+    test_block( 128'h3ad77bb40d7a3660a89ecaf32466ef97, // NIST ECB example vector
+        128'h6bc1bee22e409f96e93d7e117393172a );
+    test_block( 128'hf5d3d58503b9699de785895a96fdbaaf, // NIST ECB example vector
+        128'hae2d8a571e03ac9c9eb76fac45af8e51 );
+    test_block( 128'h43b1cd7f598ece23881b00e3ed030688, // NIST ECB example vector
+        128'h30c81c46a35ce411e5fbc1191a0a52ef );
+    test_block( 128'h7b0c785e27e8ad3f8223207104725dd4, // NIST ECB example vector
+        128'hf69f2445df4f9b17ad2b417be66c3710 );
+    passed = ( rkey[0] == round_key0 ) && ( rkey[0] == round_key1 );
+    $display( "Round [0] key (encipher key) test %s", passed ? "passed" : "failed" );
     $finish;
 end // test
 
@@ -129,9 +129,9 @@ end // test
 initial begin // Generate VCD file for GTKwave
 /*============================================================================*/
 `ifdef GTK_WAVE
-    $dumpfile( "aes_enc_tb.vcd" );
+    $dumpfile( "aes_dec_tb.vcd" );
     $dumpvars( 0 );
 `endif
 end
 
-endmodule // aes_enc_tb
+endmodule // aes_dec_tb

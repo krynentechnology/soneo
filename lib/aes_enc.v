@@ -36,38 +36,40 @@ module aes_enc #(
     parameter [0:0] FAST_MODE = 1 ) // 1 == faster at extra logic cost
     (
     input  wire clk,
-    input  wire [127:0] s_aes_key,
+    input  wire [127:0] s_aes_key, // Encipher key
     input  wire [127:0] s_aes_block,
     input  wire s_aes_valid,
     output wire s_aes_ready,
-    output wire [127:0] m_aes_block
+    output wire [127:0] m_aes_block, // Encrypted block
+    output wire [3:0] round, // For verification
+    output wire [127:0] round_key // Last round key = decipher key   
     );
 
 /*============================================================================*/
-function [7:0] mod_x_by_2( input [7:0] x );
+function [7:0] mod_x_2( input [7:0] x );
 /*============================================================================*/
 begin
-    mod_x_by_2 = {x[6:0], 1'b0} ^ ( 8'h1b & {8{x[7]}} );
+    mod_x_2 = {x[6:0], 1'b0} ^ ( 8'h1b & {8{x[7]}} );
 end
-endfunction // mod_x_by_2
+endfunction // mod_x_2
 
 /*============================================================================*/
-function [7:0] mod_x_by_3( input [7:0] x );
+function [7:0] mod_x_3( input [7:0] x );
 /*============================================================================*/
 begin
-    mod_x_by_3 = mod_x_by_2( x ) ^ x;
+    mod_x_3 = mod_x_2( x ) ^ x;
 end
-endfunction // mod_x_by_3
+endfunction // mod_x_3
 
 /*============================================================================*/
 function [31:0] pre_mix( input [31:0] x );
 /*============================================================================*/
 begin
     pre_mix = {
-        {mod_x_by_2( x[31:24] ) ^ mod_x_by_3( x[23:16] ) ^ x[15:8] ^ x[7:0]},
-        {x[31:24] ^ mod_x_by_2( x[23:16] ) ^ mod_x_by_3( x[15:8] ) ^ x[7:0]},
-        {x[31:24] ^ x[23:16] ^ mod_x_by_2( x[15:8] ) ^ mod_x_by_3( x[7:0] )},
-        {mod_x_by_3( x[31:24] ) ^ x[23:16] ^ x[15:8] ^ mod_x_by_2( x[7:0] )}
+        {mod_x_2( x[31:24] ) ^ mod_x_3( x[23:16] ) ^ x[15:8] ^ x[7:0]},
+        {x[31:24] ^ mod_x_2( x[23:16] ) ^ mod_x_3( x[15:8] ) ^ x[7:0]},
+        {x[31:24] ^ x[23:16] ^ mod_x_2( x[15:8] ) ^ mod_x_3( x[7:0] )},
+        {mod_x_3( x[31:24] ) ^ x[23:16] ^ x[15:8] ^ mod_x_2( x[7:0] )}
     };
 end
 endfunction // pre_mix
@@ -140,18 +142,19 @@ always @(*) begin: key_expansion
 
     if ( next_rkey ) begin
         rkey0 = rkey[127:96] ^ temp;
-        rkey1 = rkey[95:64] ^ rkey[127:96] ^ temp;
-        rkey2 = rkey[63:32] ^ rkey[95:64] ^ rkey[127:96] ^ temp;
-        rkey3 = rkey[31:0] ^ rkey[63:32] ^ rkey[95:64] ^ rkey[127:96] ^ temp;
+        rkey1 = rkey[95:64] ^ rkey0;
+        rkey2 = rkey[63:32] ^ rkey1;
+        rkey3 = rkey[31:0] ^ rkey2;
     end
 end // key_expansion
 
 reg [1:0] sbox_word_nb = 0;
 reg [3:0] round_count = 0;
 reg [127:0] block = 0;
-reg sbox_out = 0;
+reg next_block = 0;
 reg add_rkey = 0;
 wire aes_busy;
+wire round_lt_10; // Boolean round_count lesser than 10
 
 // Registers sbox0 FAST_MODE = 0.
 reg  [31:0] sbox_s0;
@@ -177,10 +180,10 @@ always @(*) begin : pre_block
         sbox_s3 = 0;
     end
 
-    shift_rows_block   = shift_rows( block );
-    mix_columns_block  = mix_columns( shift_rows_block );
+    shift_rows_block  = shift_rows( block );
+    mix_columns_block = mix_columns( shift_rows_block );
 
-    if ( sbox_out ) begin
+    if ( next_block ) begin
         if ( FAST_MODE ) begin // Conditional synthesis!
             sbox_s0 = block[127:96];
             sbox_s1 = block[95:64];
@@ -198,27 +201,29 @@ always @(*) begin : pre_block
     end
 end // pre_block
 
-assign aes_busy = sbox_out | add_rkey;
+assign aes_busy = next_block | add_rkey;
+assign round_lt_10 = round_count < 10;
 
 /*============================================================================*/
 always @(posedge clk) begin : encipher
 /*============================================================================*/
-    next_rkey <= 0;
+    add_rkey <= 0; // Pulse
+    next_rkey <= 0; // Pulse
     if ( s_aes_valid && !aes_busy ) begin
         rkey <= s_aes_key;
         block <= add_round_key( s_aes_block, s_aes_key );
         sbox_word_nb <= 0;
         round_count <= 1;
-        sbox_out <= 1;
+        next_block <= 1;
         next_rkey <= 1;
         rcon <= 8'h01;
     end
-    if ( sbox_out ) begin
+    if ( next_block ) begin
         if ( FAST_MODE ) begin // Conditional synthesis!
             block <= {sbox_out_s0, sbox_out_s1, sbox_out_s2, sbox_out_s3};
-            sbox_out <= 0;
+            next_block <= 0;
             add_rkey <= 1;
-            next_rkey <= 1;
+            next_rkey <= round_lt_10;
         end
         else begin // Conditional synthesis!
             sbox_word_nb <= sbox_word_nb + 1;
@@ -228,34 +233,32 @@ always @(posedge clk) begin : encipher
                 2 : block[63:32]  <= sbox_out_s0;
                 3 : begin
                     block[31:0]   <= sbox_out_s0;
-                    sbox_out <= 0;
+                    next_block <= 0;
                     add_rkey <= 1;
-                    next_rkey <= 1;
+                    next_rkey <= round_lt_10;
                 end
             endcase
         end
     end
     if ( add_rkey ) begin
-        add_rkey <= 0;
-        round_count <= round_count + 1;
-        if ( round_count < 10 ) begin
-            sbox_out <= 1;
+        block <= add_round_key( shift_rows_block, rkey );
+        if ( round_lt_10 ) begin
             block <= add_round_key( mix_columns_block, rkey );
-        end
-        else begin
-            round_count <= 0;
-            block <= add_round_key( shift_rows_block, rkey );
+            round_count <= round_count + 1;
+            next_block <= 1;
         end
     end
     if ( next_rkey ) begin
         rkey <= {rkey0, rkey1, rkey2, rkey3};
-        rcon <= mod_x_by_2( rcon );
+        rcon <= mod_x_2( rcon );
     end
 end // encipher
 
 // Assignment outputs.
-assign m_aes_block = block;
 assign s_aes_ready = ~( s_aes_valid | aes_busy  );
+assign m_aes_block = block;
+assign round = round_count;
+assign round_key = rkey;
 
 reg [7:0] sbox[0:255];
 assign sbox_rkey[31:24] = sbox[rkey[31:24]];
