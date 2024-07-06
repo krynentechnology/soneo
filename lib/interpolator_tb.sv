@@ -154,7 +154,8 @@ defparam intrp4.FRACTION_WIDTH = FRACTION_WIDTH;
 
 always #5 clk = ~clk; // 100 MHz clock
 
-reg sg_enabled;
+reg sg_enabled; // Sine generator
+reg swg_enabled; // Sweep generator
 reg mute;
 reg pos_minus_6dB; // To test continuous DC -6dB positive value
 reg neg_minus_6dB; // To test continuous DC -6dB negative value
@@ -169,12 +170,14 @@ initial begin
     m_intrp4_dr = 0;
     fraction = 0;
     sg_enabled = 1;
+    swg_enabled = 0;
     mute = 0;
     pos_minus_6dB = 1;
     neg_minus_6dB = 0;
     $display( "Interpolator simulation started" );
     #100 // 0.1us
     wait ( clk ) @( negedge clk );
+    $display( "Sine generator enabled" );
     rst_n = 1;
     m_intrp1_dr = 1;
     fraction[CNTRW-2] = 1; // fraction = 0.5
@@ -195,13 +198,16 @@ initial begin
     neg_minus_6dB = 0;
     #100000 // 100us
     mute = 1;
+    $display( "Mute" );
     #5000 // 5us
     m_intrp2_dr = 1;
     m_intrp3_dr = 1;
     m_intrp4_dr = 1;
     sg_enabled = 0;
+    swg_enabled = 1;
     mute = 0;
-    #1000000 // 1 ms
+    $display( "Sweep generator enabled" );
+    #200000 // 200us
    $finish;
 end
 
@@ -264,14 +270,12 @@ reg sg_dv = 0;
 
 localparam real MATH_2_PI = 2 * 3.14159265358979323846;
 localparam integer SAMPLE_FREQUENCY = 48000;
-localparam real MULTIPLIER = ( 2.0 ** ( INPUT_WIDTH - 1 )) - 1;
+localparam real FACTOR_1 = ( 2.0 ** ( INPUT_WIDTH - 1 )) - 1;
 real step[NR_CHANNELS-1:0];
 real sine_counter[NR_CHANNELS-1:0];
 /*============================================================================*/
 initial begin
 /*============================================================================*/
-    sg_ch = 0;
-    sg_dv = 0;
     step[0] = MATH_2_PI * 1000 / SAMPLE_FREQUENCY;
     step[1] = MATH_2_PI * 4000 / SAMPLE_FREQUENCY;
     step[2] = MATH_2_PI * 16000 / SAMPLE_FREQUENCY;
@@ -295,7 +299,7 @@ always @(posedge clk) begin : sine_generator
                 sg_d[INPUT_WIDTH-1:INPUT_WIDTH-2] <= 3'b11;
             end
             else begin
-                sg_d_c = MULTIPLIER * $sin( sine_counter[sg_ch] );
+                sg_d_c = FACTOR_1 * $sin( sine_counter[sg_ch] );
                 sg_d <= sg_d_c;
                 sine_counter[sg_ch] <= sine_counter[sg_ch] + step[sg_ch];
             end
@@ -321,7 +325,7 @@ end // sine_generator
 /////////////////////////////// Sweep generator ////////////////////////////////
 localparam real F_START = 10.0;
 localparam real F_END = 24000.0;
-localparam real F_INTERVAL = 1.0;
+localparam real F_INTERVAL = 0.5;
 localparam NR_STEPS = 5000;
 real swg_delta = 0;
 real swg_t = 0;
@@ -334,21 +338,21 @@ reg swg_dv = 0;
 /*============================================================================*/
 always @(posedge clk) begin : sweep_generator
 /*============================================================================*/
-    if ( !sg_enabled ) begin
+    if ( swg_enabled ) begin
         if ( swg_step < NR_STEPS ) begin
             swg_dv <= swg_dv & ~( s_intrp2_dr & s_intrp3_dr & s_intrp4_dr );
             if ( !swg_dv ) begin
                 swg_delta = swg_step / $itor( NR_STEPS ); 
                 swg_t = F_INTERVAL * swg_delta;
                 swg_phase = MATH_2_PI * swg_t * ( F_START + (( F_END - F_START ) * swg_delta / 2 ));
-                swg_d_c = MULTIPLIER * $sin( swg_phase );
+                swg_d_c = FACTOR_1 * $sin( swg_phase );
                 swg_d <= swg_d_c;
                 swg_dv <= 1;
                 swg_step <= swg_step + 1;
             end
         end
     end
-    if ( !rst_n || sg_enabled ) begin
+    if ( !rst_n ) begin
         swg_step <= 0;
         swg_d <= 0;
         swg_dv <= 0;
