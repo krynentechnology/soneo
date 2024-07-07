@@ -131,21 +131,10 @@ reg [7:0] rcon = 0;
 /*============================================================================*/
 always @(*) begin: key_expansion
 /*============================================================================*/
-    reg [31:0] temp;
-
-    temp = {sbox_rkey[23:0], sbox_rkey[31:24]} ^ {rcon, 24'h0};
-
-    rkey0 = 0;
-    rkey1 = 0;
-    rkey2 = 0;
-    rkey3 = 0;
-
-    if ( next_rkey ) begin
-        rkey0 = rkey[127:96] ^ temp;
-        rkey1 = rkey[95:64] ^ rkey0;
-        rkey2 = rkey[63:32] ^ rkey1;
-        rkey3 = rkey[31:0] ^ rkey2;
-    end
+    rkey0 = rkey[127:96] ^ {sbox_rkey[23:0], sbox_rkey[31:24]} ^ {rcon, 24'h0};
+    rkey1 = rkey[95:64] ^ rkey0;
+    rkey2 = rkey[63:32] ^ rkey1;
+    rkey3 = rkey[31:0] ^ rkey2;
 end // key_expansion
 
 reg [1:0] sbox_word_nb = 0;
@@ -173,31 +162,22 @@ reg [127:0] mix_columns_block;
 /*============================================================================*/
 always @(*) begin : pre_block
 /*============================================================================*/
-    sbox_s0 = 0;
-    if ( FAST_MODE ) begin // Conditional synthesis!
-        sbox_s1 = 0;
-        sbox_s2 = 0;
-        sbox_s3 = 0;
-    end
-
     shift_rows_block  = shift_rows( block );
     mix_columns_block = mix_columns( shift_rows_block );
 
-    if ( next_block ) begin
-        if ( FAST_MODE ) begin // Conditional synthesis!
-            sbox_s0 = block[127:96];
-            sbox_s1 = block[95:64];
-            sbox_s2 = block[63:32];
-            sbox_s3 = block[31:0];
-        end
-        else begin // Conditional synthesis!
-            case ( sbox_word_nb )
-                0 : sbox_s0 = block[127:96];
-                1 : sbox_s0 = block[95:64];
-                2 : sbox_s0 = block[63:32];
-                3 : sbox_s0 = block[31:0];
-            endcase
-        end
+    if ( FAST_MODE ) begin // Conditional synthesis!
+        sbox_s0 = block[127:96];
+        sbox_s1 = block[95:64];
+        sbox_s2 = block[63:32];
+        sbox_s3 = block[31:0];
+    end
+    else begin // Conditional synthesis!
+        case ( sbox_word_nb )
+            0 : sbox_s0 = block[127:96];
+            1 : sbox_s0 = block[95:64];
+            2 : sbox_s0 = block[63:32];
+            3 : sbox_s0 = block[31:0];
+        endcase
     end
 end // pre_block
 
