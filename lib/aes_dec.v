@@ -180,7 +180,6 @@ reg [31:0] rkey0;
 reg [31:0] rkey1;
 reg [31:0] rkey2;
 reg [31:0] rkey3;
-wire [31:0] sbox_rkey;
 wire [31:0] sbox_rkey3;
 reg next_rkey = 0;
 reg [7:0] rcon = 0;
@@ -301,10 +300,6 @@ assign round_key = rkey;
 
 reg [7:0] sbox[0:255];
 reg [7:0] inv_sbox[0:255];
-assign sbox_rkey[31:24] = sbox[rkey[31:24]];
-assign sbox_rkey[23:16] = sbox[rkey[23:16]];
-assign sbox_rkey[15:8]  = sbox[rkey[15:8]];
-assign sbox_rkey[7:0]   = sbox[rkey[7:0]];
 assign sbox_rkey3[31:24] = sbox[rkey3[31:24]];
 assign sbox_rkey3[23:16] = sbox[rkey3[23:16]];
 assign sbox_rkey3[15:8]  = sbox[rkey3[15:8]];
