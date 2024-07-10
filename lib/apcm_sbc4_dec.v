@@ -19,8 +19,8 @@
  *
  *  Description:
  *
- *  APCM SCB4 decoder to process a 20 byte (160 bit) APCM packet into eight
- *  16-bit samples (two sets of four). The first two packet bytes (16-bit word)
+ *  APCM SCB4 decoder to process a 20 byte (160 bit) APCM packet into 32 16-bit
+ *  samples (eight sets of four). The first two packet bytes (16-bit word)
  *  contain the four 4-bit scale factors (S0/S1/S2/S3). The last two packet
  *  bytes are reserved for an authentication/CRC 16-bit input and is ignored.
  *

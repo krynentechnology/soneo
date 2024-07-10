@@ -124,9 +124,7 @@
 `default_nettype none
 
 module interpolator #(
-    parameter POL_3RD_ORDER  = 1,
-    parameter POL_4TH_ORDER  = 0,
-    parameter POL_5TH_ORDER  = 0,
+    parameter POLYNOMIAL     = "3RD_ORDER", // "4TH_ORDER", "5TH_ORDER"
     parameter INPUT_WIDTH    = 24, // Input width
     parameter FRACTION_WIDTH = 32, // >= INPUT_WIDTH + 1
     parameter NR_CHANNELS    = 2 ) // Number of interpolation channels
@@ -190,9 +188,9 @@ localparam
 /*============================================================================*/
 initial begin : param_check
 /*============================================================================*/
-    if (( POL_3RD_ORDER && ( POL_4TH_ORDER || POL_5TH_ORDER )) ||
-        ( POL_4TH_ORDER && ( POL_3RD_ORDER || POL_5TH_ORDER )) ||
-        ( POL_5TH_ORDER && ( POL_3RD_ORDER || POL_4TH_ORDER ))) begin
+    if ( POLYNOMIAL != "3RD_ORDER" &&
+         POLYNOMIAL != "4TH_ORDER" &&
+         POLYNOMIAL != "5TH_ORDER" ) begin
         $display( "Select one of the interpolation implementations!" );
         $finish;
     end
@@ -371,7 +369,7 @@ always @(*) begin : multiplication_and_calc_coeff
 /*============================================================================*/
     product_c = ( p_arg_1 * p_arg_2 ) + // Round to zero (for negative values)!
         $signed( {{( ASW + 1 ){1'b0}}, {( CNTRW - 1 ){p_arg_2[ASW-1]}}} );
-    if ( POL_3RD_ORDER ) begin
+    if ( POLYNOMIAL == "3RD_ORDER" ) begin // Conditional synthesis!
         // 6a = -p1 + 3p0 - 3n1 + n2
         a_x_6 = -p1_c + p0_x_3 - n1_x_3 + n2_c;
         // 2b = p1 - 2p0 + n1
@@ -379,7 +377,7 @@ always @(*) begin : multiplication_and_calc_coeff
         // 6c = -2p1 - 3p0 + 6n1 - n2
         c_x_6 = -( p1_c << 1 ) - p0_x_3 + n1_x_6 - n2_c;
     end
-    if ( POL_4TH_ORDER ) begin
+    if ( POLYNOMIAL == "4TH_ORDER" ) begin // Conditional synthesis!
         // 24a = p2 - 4p1 + 6p0 - 4n1 + n2
         a_x_24 = p2_c - p1_plus_n1__x_4 + p0_x_6 + n2_c;
         // 12b = -p2 + 2p1 - 2n1 + n2
@@ -389,7 +387,7 @@ always @(*) begin : multiplication_and_calc_coeff
         // 12d = p2 - 8p1 + 8n1 - n2
         d_x_12 = p2_c - ( p1_minus_n1__x_2 << 2 ) - n2_c;
     end
-    if ( POL_5TH_ORDER ) begin
+    if ( POLYNOMIAL == "5TH_ORDER" ) begin // Conditional synthesis!
         // a = ( 6 * ( n1 - p0 )) + ( 2 * ( p1 - n2 ))
         a = n1_minus_p0__x_6 + p1_minus_n1__x_2;
         // b = ( 15 * ( p0 - n1 )) + ( 5 * ( n2 - p1 ))
@@ -456,8 +454,8 @@ assign x0_1 = { 1'b0, acc_fraction[CNTRW-2:0] };
 
 wire signed [ASW-1:0] yx_i;
 assign yx_i = product_c[PW-2:CNTRW-1] +
-    ( POL_3RD_ORDER ? cx_plus_d_r :
-        ( POL_4TH_ORDER ? cxx_plus_dx_plus_e_r : d3rd_e4th_f5th )); // POL_5TH_ORDER
+    (( POLYNOMIAL == "3RD_ORDER" ) ? cx_plus_d_r :
+        (( POLYNOMIAL == "4TH_ORDER" ) ? cxx_plus_dx_plus_e_r : d3rd_e4th_f5th )); // 5TH_ORDER
 wire overflow_xy_i_p; // Positive values
 assign overflow_xy_i_p = !yx_i[ASW-1] && |yx_i[ASW-2:INW-1];
 wire overflow_xy_i_n; // Negative values
@@ -479,7 +477,7 @@ reg signed [OUTW-1:0]  m_intrp_d_i;
 always @(posedge clk) begin : calc_y
 /*============================================================================*/
     m_intrp_dv_i <= m_intrp_dv_i & !m_intrp_dr;
-    if ( POL_3RD_ORDER ) begin
+    if ( POLYNOMIAL == "3RD_ORDER" ) begin // Conditional synthesis!
         // y(x)  = x(x(ax + b) + c) + d
         ax_x_6 <= s0;
         if ( ax_x_6 ) begin
@@ -515,7 +513,7 @@ always @(posedge clk) begin : calc_y
         end
         yx <= axxx_plus_bxx;
     end
-    if ( POL_4TH_ORDER ) begin
+    if ( POLYNOMIAL == "4TH_ORDER" ) begin // Conditional synthesis!
         // y(x) = x(x(x(ax + b) + c) + d) + e
         ax_x_24 <= s0;
         if ( ax_x_24) begin
@@ -561,7 +559,7 @@ always @(posedge clk) begin : calc_y
         end
         yx <= axxxx_plus_bxxx;
     end
-    if ( POL_5TH_ORDER ) begin
+    if ( POLYNOMIAL == "5TH_ORDER" ) begin // Conditional synthesis!
         // y(x) = ax5 + bx4 + cx3 + dx2 + ex + f  // 5th order polynomial
         ax <= s0;
         if ( ax ) begin

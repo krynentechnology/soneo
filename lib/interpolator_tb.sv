@@ -64,9 +64,7 @@ interpolator intrp1(
     .m_intrp_dr(m_intrp1_dr),
     .overflow(overflow1));
 
-defparam intrp1.POL_3RD_ORDER = 1;
-defparam intrp1.POL_4TH_ORDER = 0;
-defparam intrp1.POL_5TH_ORDER = 0;
+defparam intrp1.POLYNOMIAL = "3RD_ORDER";
 defparam intrp1.NR_CHANNELS = NR_CHANNELS;
 defparam intrp1.INPUT_WIDTH = INPUT_WIDTH;
 defparam intrp1.FRACTION_WIDTH = FRACTION_WIDTH;
@@ -91,9 +89,7 @@ interpolator intrp2(
     .m_intrp_dr(m_intrp2_dr),
     .overflow(overflow2));
 
-defparam intrp2.POL_3RD_ORDER = 1;
-defparam intrp2.POL_4TH_ORDER = 0;
-defparam intrp2.POL_5TH_ORDER = 0;
+defparam intrp1.POLYNOMIAL = "3RD_ORDER";
 defparam intrp2.NR_CHANNELS = 1;
 defparam intrp2.INPUT_WIDTH = INPUT_WIDTH;
 defparam intrp2.FRACTION_WIDTH = FRACTION_WIDTH;
@@ -118,9 +114,7 @@ interpolator intrp3(
     .m_intrp_dr(m_intrp3_dr),
     .overflow(overflow3));
 
-defparam intrp3.POL_3RD_ORDER = 0;
-defparam intrp3.POL_4TH_ORDER = 1;
-defparam intrp3.POL_5TH_ORDER = 0;
+defparam intrp1.POLYNOMIAL = "4TH_ORDER";
 defparam intrp3.NR_CHANNELS = 1;
 defparam intrp3.INPUT_WIDTH = INPUT_WIDTH;
 defparam intrp3.FRACTION_WIDTH = FRACTION_WIDTH;
@@ -145,9 +139,7 @@ interpolator intrp4(
     .m_intrp_dr(m_intrp4_dr),
     .overflow(overflow4));
 
-defparam intrp4.POL_3RD_ORDER = 0;
-defparam intrp4.POL_4TH_ORDER = 0;
-defparam intrp4.POL_5TH_ORDER = 1;
+defparam intrp1.POLYNOMIAL = "5TH_ORDER";
 defparam intrp4.NR_CHANNELS = 1;
 defparam intrp4.INPUT_WIDTH = INPUT_WIDTH;
 defparam intrp4.FRACTION_WIDTH = FRACTION_WIDTH;
