@@ -179,7 +179,7 @@ output wire             overflow;
  * generally 48kHz audio could be converted down to 44.1kHz or 32kHz.
  **/
 localparam
-    real FACTOR_1 = ( 2.0 ** ( CNTRW - 1 )) - 1; // 1.0 == power 2 fraction width
+    real FACTOR_1 = 2.0 ** ( CNTRW - 1 ); // 1.0 == power 2 fraction width
     real ONE_SIXTH = ( FACTOR_1 / 6.0 ) + 0.5; // 1/6 factor
     real ONE_TWELFTH = ( FACTOR_1 / 12.0 ) + 0.5; // 1/12 factor
     real ONE_TWENTY_FOURTH = ( FACTOR_1 / 24.0 ) + 0.5; // 1/24 factor
@@ -216,15 +216,15 @@ reg signed  [INW-1:0] n2 [0:CHN-1];
 wire signed [INW-1:0] n2_c;
 
 // Boolean states
-reg s0;
-reg s0_i;
-reg s0_ii;
-reg yx;
-reg next_x;
+reg s0 = 0;
+reg s0_i = 0;
+reg s0_ii = 0;
+reg yx = 0;
+reg next_x = 0;
 
-reg s_intrp_dr_i;
-reg [CHW-1:0] m_intrp_ch_i;
-reg m_intrp_dv_i;
+reg s_intrp_dr_i = 0;
+reg [CHW-1:0] m_intrp_ch_i = 0;
+reg m_intrp_dv_i = 0;
 wire   chs_intrp_dv; // Channel select valid
 assign chs_intrp_dv = s_intrp_dv && s_intrp_dr_i && ( s_intrp_ch < NR_CHANNELS );
 
@@ -232,14 +232,6 @@ integer i = 0;
 /*============================================================================*/
 initial begin
 /*============================================================================*/
-    s0 = 0;
-    s0_i = 0;
-    s0_ii = 0;
-    yx = 0;
-    next_x = 0;
-    s_intrp_dr_i = 1;
-    m_intrp_ch_i = 0;
-    m_intrp_dv_i = 0;
     for ( i = 0; i < CHN; i = i + 1 ) begin // Initialize data memory
         p2[i] = 0;
         p1[i] = 0;
@@ -274,8 +266,8 @@ end // fifo
 assign s_intrp_dr = s_intrp_dr_i;
 assign m_intrp_ch = m_intrp_ch_i;
 
-reg [CNTRW-1:0] step;
-reg [CNTRW:0] acc_fraction;
+reg [CNTRW-1:0] step = 0;
+reg [CNTRW:0] acc_fraction = 0;
 wire [CNTRW:0] acc_fraction_c;
 assign acc_fraction_c = acc_fraction + { 1'b0, step };
 wire next_x_c;
@@ -330,18 +322,18 @@ wire signed [ASW-1:0] n2_minus_p1;
 wire signed [ASW-1:0] p1_minus_n2__x_2;
 wire signed [ASW-1:0] p1_minus_n2__x_3;
 wire signed [ASW-1:0] n2_minus_p1__x_5;
-reg signed  [ASW-1:0] a;
-reg signed  [ASW-1:0] a_x_6;
-reg signed  [ASW-1:0] a_x_24;
-reg signed  [ASW-1:0] b;
-reg signed  [ASW-1:0] b_x_12;
-reg signed  [ASW-1:0] c;
-reg signed  [ASW-1:0] c_x_6;
-reg signed  [ASW-1:0] c_x_24;
-reg signed  [ASW-1:0] d;
-reg signed  [ASW-1:0] d_x_12;
-reg signed  [ASW-1:0] e;
-reg signed  [ASW-1:0] d3rd_e4th_f5th;
+reg signed  [ASW-1:0] a = 0;
+reg signed  [ASW-1:0] a_x_6 = 0;
+reg signed  [ASW-1:0] a_x_24 = 0;
+reg signed  [ASW-1:0] b = 0;
+reg signed  [ASW-1:0] b_x_12 = 0;
+reg signed  [ASW-1:0] c = 0;
+reg signed  [ASW-1:0] c_x_6 = 0;
+reg signed  [ASW-1:0] c_x_24 = 0;
+reg signed  [ASW-1:0] d = 0;
+reg signed  [ASW-1:0] d_x_12 = 0;
+reg signed  [ASW-1:0] e = 0;
+reg signed  [ASW-1:0] d3rd_e4th_f5th = 0;
 
 assign p0_x_2 = p0_c << 1;
 assign p0_x_3 = p0_x_2 + p0_c;
@@ -403,48 +395,23 @@ always @(*) begin : multiplication_and_calc_coeff
 end // multiplication_and_calc_coeff
 
 // Boolean states
-reg signed ax_x_6;
-reg signed ax_x_24;
-reg signed ax;
-reg signed ax_plus_b;
-reg signed ax_plus_b_x_24;
-reg signed axx_bx_c;
-reg signed axxx_bxx_cx_d;
-reg signed axxxx_bxxx_cxx_dx_e;
-reg signed cx;
-reg signed cx_plus_d_x_24;
-reg signed axx_plus_bx;
-reg signed cxx_plus_dx;
-reg signed axxx_plus_bxx;
-reg signed axxxx_plus_bxxx;
-reg signed [ASW-1:0] ax_plus_b_r;
-reg signed [ASW-1:0] cx_plus_d_r;
-reg signed [ASW-1:0] cxx_plus_dx_plus_e_r;
-
-/*============================================================================*/
-initial begin
-/*============================================================================*/
-    step = 0;
-    acc_fraction = 0;
-    ax_x_6 = 0;
-    ax_x_24 = 0;
-    ax = 0;
-    ax_plus_b = 0;
-    axx_plus_bx = 0;
-    ax_plus_b_x_24 = 0;
-    axx_bx_c = 0;
-    axxx_bxx_cx_d = 0;
-    axxxx_bxxx_cxx_dx_e = 0;
-    cx = 0;
-    cx_plus_d_x_24 = 0;
-    cxx_plus_dx = 0;
-    axxx_plus_bxx = 0;
-    axxxx_plus_bxxx = 0;
-    ax_plus_b_r = 0;
-    cx_plus_d_r = 0;
-    cxx_plus_dx_plus_e_r = 0;
-    d3rd_e4th_f5th = 0;
-end
+reg ax_x_6 = 0;
+reg ax_x_24 = 0;
+reg ax = 0;
+reg ax_plus_b = 0;
+reg ax_plus_b_x_24 = 0;
+reg axx_bx_c = 0;
+reg axxx_bxx_cx_d = 0;
+reg axxxx_bxxx_cxx_dx_e = 0;
+reg cx = 0;
+reg cx_plus_d_x_24 = 0;
+reg axx_plus_bx = 0;
+reg cxx_plus_dx = 0;
+reg axxx_plus_bxx = 0;
+reg axxxx_plus_bxxx = 0;
+reg signed [ASW-1:0] ax_plus_b_r = 0;
+reg signed [ASW-1:0] cx_plus_d_r = 0;
+reg signed [ASW-1:0] cxx_plus_dx_plus_e_r = 0;
 
 localparam [INW-2:0] ALL_ZERO = 0; // 00000...
 localparam [INW-2:0] ALL_ONES = -1; // 11111...
@@ -472,7 +439,7 @@ assign overflow_cx_plus_d_r =
     ( !cx_plus_d_r[ASW-1] && |cx_plus_d_r[ASW-2:INW-1] ) |
     ( cx_plus_d_r[ASW-1] && !( &cx_plus_d_r[ASW-2:INW-1] ));
 
-reg signed [OUTW-1:0]  m_intrp_d_i;
+reg signed [OUTW-1:0] m_intrp_d_i = 0;
 /*============================================================================*/
 always @(posedge clk) begin : calc_y
 /*============================================================================*/
@@ -601,21 +568,21 @@ always @(posedge clk) begin : calc_y
         m_intrp_dv_i <= 1;
     end
     if ( !rst_n ) begin
-        yx <= 0;
+        ax <= 0;
         ax_x_6 <= 0;
         ax_x_24 <= 0;
-        ax <= 0;
         ax_plus_b <= 0;
         axx_plus_bx <= 0;
         axx_bx_c <= 0;
         axxx_bxx_cx_d <= 0;
+        axxx_plus_bxx <= 0;
+        axxxx_plus_bxxx <= 0;
         axxxx_bxxx_cxx_dx_e <= 0;
         ax_plus_b_x_24 <= 0;
         cx <= 0;
         cx_plus_d_x_24 <= 0;
         cxx_plus_dx <= 0;
-        axxx_plus_bxx <= 0;
-        axxxx_plus_bxxx <= 0;
+        yx <= 0;
         ax_plus_b_r <= 0;
         cx_plus_d_r <= 0;
         cxx_plus_dx_plus_e_r <= 0;
