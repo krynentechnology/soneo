@@ -206,10 +206,10 @@ reg  [31:0] sbox_s0;
 wire [31:0] sbox_out_s0;
 // Registers sbox1-3 FAST_MODE = 1.
 reg  [31:0] sbox_s1;
-wire [31:0] sbox_out_s1;
 reg  [31:0] sbox_s2;
-wire [31:0] sbox_out_s2;
 reg  [31:0] sbox_s3;
+wire [31:0] sbox_out_s1;
+wire [31:0] sbox_out_s2;
 wire [31:0] sbox_out_s3;
 
 reg [127:0] xor_block;
@@ -304,24 +304,33 @@ assign sbox_rkey3[31:24] = sbox[rkey3[31:24]];
 assign sbox_rkey3[23:16] = sbox[rkey3[23:16]];
 assign sbox_rkey3[15:8]  = sbox[rkey3[15:8]];
 assign sbox_rkey3[7:0]   = sbox[rkey3[7:0]];
-// Assignment FAST_MODE = 0.
-assign sbox_out_s0[31:24] = inv_sbox[sbox_s0[31:24]];
-assign sbox_out_s0[23:16] = inv_sbox[sbox_s0[23:16]];
-assign sbox_out_s0[15:8]  = inv_sbox[sbox_s0[15:8]];
-assign sbox_out_s0[7:0]   = inv_sbox[sbox_s0[7:0]];
-// Assignment FAST_MODE = 1.
-assign sbox_out_s1[31:24] = inv_sbox[sbox_s1[31:24]];
-assign sbox_out_s1[23:16] = inv_sbox[sbox_s1[23:16]];
-assign sbox_out_s1[15:8]  = inv_sbox[sbox_s1[15:8]];
-assign sbox_out_s1[7:0]   = inv_sbox[sbox_s1[7:0]];
-assign sbox_out_s2[31:24] = inv_sbox[sbox_s2[31:24]];
-assign sbox_out_s2[23:16] = inv_sbox[sbox_s2[23:16]];
-assign sbox_out_s2[15:8]  = inv_sbox[sbox_s2[15:8]];
-assign sbox_out_s2[7:0]   = inv_sbox[sbox_s2[7:0]];
-assign sbox_out_s3[31:24] = inv_sbox[sbox_s3[31:24]];
-assign sbox_out_s3[23:16] = inv_sbox[sbox_s3[23:16]];
-assign sbox_out_s3[15:8]  = inv_sbox[sbox_s3[15:8]];
-assign sbox_out_s3[7:0]   = inv_sbox[sbox_s3[7:0]];
+
+generate
+if ( !FAST_MODE ) begin
+    assign sbox_out_s0[31:24] = inv_sbox[sbox_s0[31:24]];
+    assign sbox_out_s0[23:16] = inv_sbox[sbox_s0[23:16]];
+    assign sbox_out_s0[15:8]  = inv_sbox[sbox_s0[15:8]];
+    assign sbox_out_s0[7:0]   = inv_sbox[sbox_s0[7:0]];
+end
+if ( FAST_MODE ) begin
+    assign sbox_out_s0[31:24] = inv_sbox[sbox_s0[31:24]];
+    assign sbox_out_s0[23:16] = inv_sbox[sbox_s0[23:16]];
+    assign sbox_out_s0[15:8]  = inv_sbox[sbox_s0[15:8]];
+    assign sbox_out_s0[7:0]   = inv_sbox[sbox_s0[7:0]];
+    assign sbox_out_s1[31:24] = inv_sbox[sbox_s1[31:24]];
+    assign sbox_out_s1[23:16] = inv_sbox[sbox_s1[23:16]];
+    assign sbox_out_s1[15:8]  = inv_sbox[sbox_s1[15:8]];
+    assign sbox_out_s1[7:0]   = inv_sbox[sbox_s1[7:0]];
+    assign sbox_out_s2[31:24] = inv_sbox[sbox_s2[31:24]];
+    assign sbox_out_s2[23:16] = inv_sbox[sbox_s2[23:16]];
+    assign sbox_out_s2[15:8]  = inv_sbox[sbox_s2[15:8]];
+    assign sbox_out_s2[7:0]   = inv_sbox[sbox_s2[7:0]];
+    assign sbox_out_s3[31:24] = inv_sbox[sbox_s3[31:24]];
+    assign sbox_out_s3[23:16] = inv_sbox[sbox_s3[23:16]];
+    assign sbox_out_s3[15:8]  = inv_sbox[sbox_s3[15:8]];
+    assign sbox_out_s3[7:0]   = inv_sbox[sbox_s3[7:0]];
+end
+endgenerate
 
 /*============================================================================*/
 initial begin : init_sbox // AES substitution box
