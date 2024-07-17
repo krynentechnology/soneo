@@ -55,6 +55,16 @@ wire [127:0] m_aes_block3;
 wire [3:0] round3;
 wire [127:0] round_key3;
 
+wire s_aes_ready4;
+wire [127:0] m_aes_block4;
+wire [3:0] round4;
+wire [127:0] round_key4;
+
+wire s_aes_ready5;
+wire [127:0] m_aes_block5;
+wire [3:0] round5;
+wire [127:0] round_key5;
+
 reg [127:0] rkey[0:10];
 
 aes_enc aes_enc0(
@@ -68,7 +78,7 @@ aes_enc aes_enc0(
     .round_key(round_key0)
     );
 
-defparam aes_enc0.FAST_MODE = 0;
+defparam aes_enc0.CFG_MODE = "DEFAULT";
 
 aes_enc aes_enc1(
     .clk(clk),
@@ -81,22 +91,22 @@ aes_enc aes_enc1(
     .round_key(round_key1)
     );
 
-defparam aes_enc1.FAST_MODE = 1;
+defparam aes_enc1.CFG_MODE = "FAST";
 
-aes_dec aes_dec0(
+aes_enc aes_enc2(
     .clk(clk),
-    .s_aes_key(rkey[10]),
+    .s_aes_key(rkey[0]),
     .s_aes_block(s_aes_block),
-    .s_aes_valid(s_aes_dec_valid),
+    .s_aes_valid(s_aes_enc_valid),
     .s_aes_ready(s_aes_ready2),
     .m_aes_block(m_aes_block2),
     .round(round2),
     .round_key(round_key2)
     );
 
-defparam aes_dec0.FAST_MODE = 0;
+defparam aes_enc2.CFG_MODE = "TINY";
 
-aes_dec aes_dec1(
+aes_dec aes_dec0(
     .clk(clk),
     .s_aes_key(rkey[10]),
     .s_aes_block(s_aes_block),
@@ -107,7 +117,33 @@ aes_dec aes_dec1(
     .round_key(round_key3)
     );
 
-defparam aes_dec1.FAST_MODE = 1;
+defparam aes_dec0.CFG_MODE = "DEFAULT";
+
+aes_dec aes_dec1(
+    .clk(clk),
+    .s_aes_key(rkey[10]),
+    .s_aes_block(s_aes_block),
+    .s_aes_valid(s_aes_dec_valid),
+    .s_aes_ready(s_aes_ready4),
+    .m_aes_block(m_aes_block4),
+    .round(round4),
+    .round_key(round_key4)
+    );
+
+defparam aes_dec1.CFG_MODE = "FAST";
+
+aes_dec aes_dec2(
+    .clk(clk),
+    .s_aes_key(rkey[10]),
+    .s_aes_block(s_aes_block),
+    .s_aes_valid(s_aes_dec_valid),
+    .s_aes_ready(s_aes_ready5),
+    .m_aes_block(m_aes_block5),
+    .round(round5),
+    .round_key(round_key5)
+    );
+
+defparam aes_dec2.CFG_MODE = "TINY";
 
 always #5 clk = ~clk; // 100MHz
 
@@ -128,37 +164,59 @@ initial begin
     rkey[10] = 128'hd014f9a8c9ee2589e13f0cc8b6630ca6; // Decipher key
 end
 
-reg passed = 0;
+reg passed_enc = 0;
 /*============================================================================*/
 task test_enc( input [127:0] block, input[127:0] block_expected );
 /*============================================================================*/
 begin
     s_aes_block = block;
+    wait ( s_aes_ready0 && s_aes_ready1 && s_aes_ready2 )
+    wait ( clk ) @( negedge clk )
     wait ( clk ) @( negedge clk )
     s_aes_enc_valid = 1;
     wait ( clk ) @( negedge clk )
     s_aes_enc_valid = 0;
-    wait ( s_aes_ready0 && s_aes_ready1 )
-    passed = ( block_expected == m_aes_block0 ) && ( block_expected == m_aes_block1 );
-    $display( "Block %0x test %s", block, passed ? "passed" : "failed" );
+    wait ( clk ) @( negedge clk )
+    wait ( s_aes_ready0 && s_aes_ready1 && s_aes_ready2 )
+    passed_enc = ( block_expected == m_aes_block0 ) &&
+        ( block_expected == m_aes_block1 ) &&
+        ( block_expected == m_aes_block2 );
+//    $display( "Block %0x expected", block_expected );
+//    $display( "Block %0x m_aes_block0", m_aes_block0 );
+//    $display( "Block %0x m_aes_block1", m_aes_block1 );
+//    $display( "Block %0x m_aes_block2", m_aes_block2 );
+    $display( "Block %0x test %s", block, passed_enc ? "passed" : "failed" );
+    wait ( clk ) @( negedge clk );
 end
 endtask
 
+reg passed_dec = 0;
 /*============================================================================*/
 task test_dec( input [127:0] block, input[127:0] block_expected );
 /*============================================================================*/
 begin
     s_aes_block = block;
+    wait ( s_aes_ready3 && s_aes_ready4 && s_aes_ready5 )
+    wait ( clk ) @( negedge clk )
     wait ( clk ) @( negedge clk )
     s_aes_dec_valid = 1;
     wait ( clk ) @( negedge clk )
     s_aes_dec_valid = 0;
-    wait ( s_aes_ready2 && s_aes_ready3 )
-    passed = ( block_expected == m_aes_block2 ) && ( block_expected == m_aes_block3 );
-    $display( "Block %0x test %s", block, passed ? "passed" : "failed" );
+    wait ( clk ) @( negedge clk )
+    wait ( s_aes_ready3 && s_aes_ready4 && s_aes_ready5 )
+    passed_dec = ( block_expected == m_aes_block3 ) &&
+        ( block_expected == m_aes_block4 ) &&
+        ( block_expected == m_aes_block5 );
+//    $display( "Block %0x expected", block_expected );
+//    $display( "Block %0x m_aes_block3", m_aes_block3 );
+//    $display( "Block %0x m_aes_block4", m_aes_block4 );
+//    $display( "Block %0x m_aes_block5", m_aes_block5 );
+    $display( "Block %0x test %s", block, passed_dec ? "passed" : "failed" );
+    wait ( clk ) @( negedge clk );
 end
 endtask
 
+reg passed = 0;
 /*============================================================================*/
 initial begin : test
 /*============================================================================*/
@@ -172,7 +230,9 @@ initial begin : test
         128'h43b1cd7f598ece23881b00e3ed030688 );
     test_enc( 128'hf69f2445df4f9b17ad2b417be66c3710, // NIST ECB example vector
         128'h7b0c785e27e8ad3f8223207104725dd4 );
-    passed = ( rkey[10] == round_key0 ) && ( rkey[10] == round_key1 );
+    passed = ( rkey[10] == round_key0 ) &&
+        ( rkey[10] == round_key1 ) &&
+        ( rkey[10] == round_key2 );
     $display( "Round [10] key (decipher key) test %s", passed ? "passed" : "failed" );
     #100 // 0.1us
     $display( "AES decipher test started" );
@@ -184,7 +244,9 @@ initial begin : test
         128'h30c81c46a35ce411e5fbc1191a0a52ef );
     test_dec( 128'h7b0c785e27e8ad3f8223207104725dd4, // NIST ECB example vector
         128'hf69f2445df4f9b17ad2b417be66c3710 );
-    passed = ( rkey[0] == round_key2 ) && ( rkey[0] == round_key3 );
+    passed = ( rkey[0] == round_key3 ) &&
+        ( rkey[0] == round_key4 ) &&
+        ( rkey[0] == round_key5 );
     $display( "Round [0] key (encipher key) test %s", passed ? "passed" : "failed" );
     $finish;
 end // test
