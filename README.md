@@ -4,6 +4,6 @@
 <ul>
   <li><a href="lib/equalizer.v">Equalizer</a>  (IIR filter biquad cascaded bands)</li>
   <li><a href="lib/interpolator.v">Interpolator</a>  (3rd, 4th and 5th order polynomial)</li>
-  <li><a href="lib/aes_enc.v">AES-128</a>  (with faster mode option)</li>
+  <li><a href="lib/aes_enc.v">AES-128</a>  (supports "DEFAULT", "FAST" and "TINY" configuration)</li>
   <li><a href="lib/apcm_sbc4_enc.v">APCM</a>  (Bluetooth A2DP 16-bits audio codec)</li>
 </ul>
