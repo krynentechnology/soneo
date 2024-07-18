@@ -500,7 +500,7 @@ assign m_aes_block = block;
 assign round = round_count;
 assign round_key = rkey;
 
-localparam [9:0] SBOX_TBL_SIZE = 256;
+localparam SBOX_TBL_SIZE = 256;
 reg [7:0] sbox[0:SBOX_TBL_SIZE-1];
 reg [7:0] sbox_inv[0:SBOX_TBL_SIZE-1];
 
