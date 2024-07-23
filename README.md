@@ -6,4 +6,5 @@
   <li><a href="lib/interpolator.v">Interpolator</a>  (3rd, 4th and 5th order polynomial)</li>
   <li><a href="lib/aes_enc.v">AES-128</a>  (supports "DEFAULT", "FAST" and "TINY" configuration)</li>
   <li><a href="lib/apcm_sbc4_enc.v">APCM</a>  (Bluetooth A2DP 16-bits audio codec)</li>
+  <li><a href="lib/sine_wg_pol.v">Sine Wave Generators</a>  (lookup sine table, linear and 3rd order interpolation)</li>
 </ul>
