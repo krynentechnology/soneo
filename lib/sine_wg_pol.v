@@ -152,7 +152,7 @@ initial begin : param_check
     end
 end // param_check
 
-reg  [AW-4:0] sine_table[0:SINE_TBL_SIZE-1];
+reg [AW-4:0] sine_table[0:SINE_TBL_SIZE-1];
 reg [SINE_TBL_WIDTH-1:0] p0;
 wire signed [AW-1:0] p0_c;
 wire signed [AW-1:0] p1_c;
@@ -186,11 +186,14 @@ assign n1_x_6 = n1_x_3 << 1;
 
 localparam [RADIAN_WIDTH-2:0] ALL_ZERO = 0; // 00000...
 localparam [RADIAN_WIDTH-2:0] ALL_ONES = -1; // 11111...
-localparam PW = 2 * AW;
+localparam PW = 2 * AW; // Product width
+localparam FW = RADIAN_WIDTH-SINE_TBL_WIDTH; // Fraction width
 
 reg signed [AW-1:0] p_arg_1;
 reg signed [AW-1:0] p_arg_2;
 reg signed [PW-1:0] product_c;
+reg signed [AW-1:0] fraction = 0;
+
 wire overflow_p; // Positive values
 assign overflow_p = !product_c[PW-1] && |product_c[PW-2:PW-4];
 wire overflow_n; // Negative values
@@ -286,23 +289,32 @@ always @(posedge clk) begin : sine_wg_polerator
     end
     set_p1n1n2 <= set_p0; // Extra clock cycle!
     if ( set_p0 ) begin
+        fraction <= 0;
         if ( !p0_pre[SINE_TBL_WIDTH+1] ) begin // Positive!
             p0 <= p0_pre[SINE_TBL_WIDTH-1:0]; // Sine table p0 index
+            fraction[AW-SINE_TBL_WIDTH+2:SINE_TBL_WIDTH-1] <=
+                product_c[PW-SINE_TBL_WIDTH-6:PW-SINE_TBL_WIDTH-FW-5];
             if ( p0_pre[SINE_TBL_WIDTH] ) begin // >= 32
                 p0 <= ~p0_pre[SINE_TBL_WIDTH-1:0];
+                fraction[AW-SINE_TBL_WIDTH+2:SINE_TBL_WIDTH-1] <=
+                    ~product_c[PW-SINE_TBL_WIDTH-6:PW-SINE_TBL_WIDTH-FW-5];
             end
         end
         if ( p0_pre[SINE_TBL_WIDTH+1] ) begin // Negative!
             p0 <= ~p0_pre[SINE_TBL_WIDTH-1:0];
+            fraction[AW-SINE_TBL_WIDTH+2:SINE_TBL_WIDTH-1] <=
+                ~product_c[PW-SINE_TBL_WIDTH-6:PW-SINE_TBL_WIDTH-FW-5];
             if ( !p0_pre[SINE_TBL_WIDTH] ) begin // >= 32
                 p0 <= p0_pre[SINE_TBL_WIDTH-1:0];
+                fraction[AW-SINE_TBL_WIDTH+2:SINE_TBL_WIDTH-1] <=
+                    product_c[PW-SINE_TBL_WIDTH-6:PW-SINE_TBL_WIDTH-FW-5];
             end
         end
     end
     // y(x)  = x(x(ax + b) + c) + d
     ax_x_6 <= set_p1n1n2;
     if ( ax_x_6 ) begin
-        p_arg_1 <= abs_sine_c;
+        p_arg_1 <= fraction;
         p_arg_2 <= a_x_6;
     end
     ax <= ax_x_6;
@@ -312,7 +324,7 @@ always @(posedge clk) begin : sine_wg_polerator
     end
     ax_plus_b <= ax;
     if ( ax_plus_b ) begin
-        p_arg_1 <= abs_sine_c;
+        p_arg_1 <= fraction;
         p_arg_2 <= c_x_6;
         ax_plus_b_r <= product_c[PW-2:AW-1] + b;
     end
@@ -323,13 +335,13 @@ always @(posedge clk) begin : sine_wg_polerator
     end
     axx_plus_bx <= cx;
     if ( axx_plus_bx ) begin
-        p_arg_1 <= abs_sine_c;
+        p_arg_1 <= fraction;
         p_arg_2 <= ax_plus_b_r;
         cx_plus_d_r <= product_c[PW-2:AW-1] + d;
     end
     axxx_plus_bxx <= axx_plus_bx;
     if ( axxx_plus_bxx ) begin
-        // p_arg_1 <= abs_sine_c;
+        // p_arg_1 <= fraction;
         p_arg_2 <= product_c[PW-2:AW-1];
         m_sine_ch_i <= sine_ch_i;
     end
@@ -344,7 +356,7 @@ always @(posedge clk) begin : sine_wg_polerator
         if ( overflow_n ) begin
             m_sine_d_i[RADIAN_WIDTH-2:0] <= ALL_ZERO;
         end
-        if ( sine_c[AW-1] ) begin // Adjust output for negative sign!
+        if ( sine_c[AW-1] && |yx_i ) begin // Adjust output for negative sign!
             m_sine_d_i[RADIAN_WIDTH-1] <= ~yx_i[AW-1]; // Negate sign!
             m_sine_d_i[RADIAN_WIDTH-2:0] <= -yx_i[RADIAN_WIDTH:2];
             // Check for overflow!
