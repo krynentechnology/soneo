@@ -235,12 +235,12 @@ reg axxx_plus_bxx = 0;
 reg cx = 0;
 reg yx = 0;
 
+reg signed [AW-1:0] s_sine_d_i = 0;
 reg [RADIAN_WIDTH-1:0] m_sine_d_i = 0;
 reg [CHANNEL_WIDTH-1:0] m_sine_ch_i = 0;
 reg m_sine_dv_i = 0;
 
-reg  [CHANNEL_WIDTH-1:0] sine_ch_i = 0;
-wire [CHANNEL_WIDTH-1:0] sine_ch_c = 0;
+reg [CHANNEL_WIDTH-1:0] sine_ch_i = 0;
 reg signed [AW-1:0] sine[0:NR_CHANNELS-1];
 
 wire signed [AW-1:0] sine_c;
@@ -251,8 +251,7 @@ wire signed [AW:0]surplus_next_sine_c;
 wire signed next_sine_gt_pi;
 wire sine_valid;
 
-assign sine_ch_c = s_sine_dv ? s_sine_ch : sine_ch_i;
-assign sine_c = sine[sine_ch_c];
+assign sine_c = sine[sine_ch_i];
 assign abs_sine_d = abs( {s_sine_d[RADIAN_WIDTH-1], s_sine_d, {(NOISE_BITS){1'b0}}} );
 assign abs_sine_c = abs( {sine_c[AW-1], sine_c} );
 assign next_sine_c = sine_c + $signed( {s_sine_d, {(NOISE_BITS){1'b0}}} );
@@ -270,11 +269,11 @@ always @(posedge clk) begin : sine_wg_polerator
         if ( sine_valid ) begin
             s_sine_dr <= 0;
             p_arg_1 <= CONV_PI;
-            sine[sine_ch_c] <= {s_sine_d, {(NOISE_BITS){1'b0}}};
+            s_sine_d_i <= {s_sine_d, {(NOISE_BITS){1'b0}}};
             if ( s_sine_phase ) begin
-                sine[sine_ch_c] <= next_sine_c;
+                s_sine_d_i <= next_sine_c;
                 if ( next_sine_gt_pi ) begin
-                    sine[sine_ch_c] <= surplus_next_sine_c[AW-1:0] + // Correction +/- PI radian
+                    s_sine_d_i <= surplus_next_sine_c[AW-1:0] + // Correction +/- PI radian
                         ( next_sine_c[AW] ? $signed( PI ) : // Negative next_sine_c!
                             $signed( -PI )); // Positive next_sine_c!
                 end
@@ -284,8 +283,9 @@ always @(posedge clk) begin : sine_wg_polerator
     end
     set_p0 <= set_p_arg_2;
     if ( set_p_arg_2 ) begin
+        sine[sine_ch_i] <= s_sine_d_i;
         // p_arg_1 <= CONV_PI;
-        p_arg_2 <= sine_c;
+        p_arg_2 <= s_sine_d_i;
     end
     set_p1n1n2 <= set_p0; // Extra clock cycle!
     if ( set_p0 ) begin

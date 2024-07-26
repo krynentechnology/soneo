@@ -90,7 +90,7 @@ begin
     s_sine_phase = 0;
     wait( s_sine_dr );
     if ( !add_phase ) begin
-        $display( "Radian = %08f, sine = %08f",  ( $signed( sine_d ) / FACTOR_1_0 ),
+        $display( "Radian = %10.7f, sine = %10.7f",  ( $signed( sine_d ) / FACTOR_1_0 ),
             ( $signed( m_sine_d ) / FACTOR_1_0 ));
     end
 end
