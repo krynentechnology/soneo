@@ -138,6 +138,7 @@ localparam signed [COEFF_WIDTH-1:0] cosine_e = COS_90; // Not used!
 
 // FIR filter coefficients
 localparam NR_COEFF = 40;
+(* rom_style = "block" *) // Synthesis likely will select "distributed"
 reg signed [COEFF_WIDTH-1:0] filter[0:NR_COEFF-1];
 /*============================================================================*/
 initial begin
