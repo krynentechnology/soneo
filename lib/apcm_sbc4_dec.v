@@ -143,7 +143,7 @@ initial begin : frame_init // Initialize apcm frame RAM
         apcm_pre_index[i] = 0;
         apcm_pre_frame[i] = 0;
     end
-    for ( i = 0; i < NB_APCM_BYTES; i = i + 1 ) begin
+    for ( i = 0; i < ( NB_APCM_BYTES - 4 ); i = i + 1 ) begin
         apcm_post_frame[i] = 0;
     end
 end // frame_init
@@ -364,7 +364,7 @@ always @(posedge clk) begin : sbc4_bitpool_dec
                     gen_subband_init <= 0; // Stop subband generation
                 end
                 else begin
-                    apcm_post_index = apcm_post_index + 2;
+                    apcm_post_index <= apcm_post_index + 2;
                 end
                 sb_tvalid_i <= 1; // All four subbands are valid
             end
