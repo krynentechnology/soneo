@@ -35,14 +35,14 @@
  *  Determination n-th order polynomial coefficients requires n+1 data points.
  *  When the polynomial coefficients are known y(x) can be calculated:
  *
- *    y(x)  = ax3 + bx2 + cx + d   // 3rd order polynomial
- *    y(x)  = x(x(ax + b) + c) + d
- *       x = -1, 0, 1, 2           // Determine coefficients by substitution
+ *    y(x) = ax3 + bx2 + cx + d   // 3rd order polynomial
+ *    y(x) = x(x(ax + b) + c) + d
+ *       x = -1, 0, 1, 2          // Determine coefficients by substitution
  *
- *    y(-1) -> p1 = -a + b - c + d             a = (-p1 + 3p0 - 3n1 + n2)/6
- *    y(0)  -> p0 = d                          b = (p1 - 2p0 + n1)/2
- *    y(1)  -> n1 = a + b + c + d              c = (-2p1 - 3p0 + 6n1 - n2)/6
- *    y(2)  -> n2 = 8a + 4b + 2c + d           d = p0
+ *    y(-1) -> p1 = -a + b - c + d            a = (-p1 + 3p0 - 3n1 + n2)/6
+ *    y(0)  -> p0 = d                         b = (p1 - 2p0 + n1)/2
+ *    y(1)  -> n1 = a + b + c + d             c = (-2p1 - 3p0 + 6n1 - n2)/6
+ *    y(2)  -> n2 = 8a + 4b + 2c + d          d = p0
  *
  *  Interpolates between p0 and n1 taking the previous (p1) and next (n2) points
  *  into account:
@@ -154,12 +154,11 @@ function integer clog2( input [MAX_CLOG2_WIDTH-1:0] value );
     end
 endfunction
 
-localparam
-    INW   = INPUT_WIDTH, // Input  width
-    OUTW  = INPUT_WIDTH, // Output width
-    CHW   = clog2( NR_CHANNELS ), // Channel width
-    CHN   = NR_CHANNELS, // Number of channels
-    CNTRW = FRACTION_WIDTH; // Fraction and counter width
+localparam INW   = INPUT_WIDTH; // Input  width
+localparam OUTW  = INPUT_WIDTH; // Output width
+localparam CHW   = clog2( NR_CHANNELS ); // Channel width
+localparam CHN   = NR_CHANNELS; // Number of channels
+localparam CNTRW = FRACTION_WIDTH; // Fraction and counter width
 
 input  wire             clk;
 input  wire             rst_n; // Synchronous reset, high when clk is stable!
@@ -203,15 +202,15 @@ initial begin : param_check
     end
 end // param_check
 
-reg signed  [INW-1:0] p2 [0:CHN-1];
+reg  signed [INW-1:0] p2 [0:CHN-1];
 wire signed [INW-1:0] p2_c;
-reg signed  [INW-1:0] p1 [0:CHN-1];
+reg  signed [INW-1:0] p1 [0:CHN-1];
 wire signed [INW-1:0] p1_c;
-reg signed  [INW-1:0] p0 [0:CHN-1];
+reg  signed [INW-1:0] p0 [0:CHN-1];
 wire signed [INW-1:0] p0_c;
-reg signed  [INW-1:0] n1 [0:CHN-1];
+reg  signed [INW-1:0] n1 [0:CHN-1];
 wire signed [INW-1:0] n1_c;
-reg signed  [INW-1:0] n2 [0:CHN-1];
+reg  signed [INW-1:0] n2 [0:CHN-1];
 wire signed [INW-1:0] n2_c;
 
 // Boolean states
@@ -224,7 +223,7 @@ reg next_x = 0;
 reg s_intrp_dr_i = 0;
 reg [CHW-1:0] m_intrp_ch_i = 0;
 reg m_intrp_dv_i = 0;
-wire   chs_intrp_dv; // Channel select valid
+wire chs_intrp_dv; // Channel select valid
 assign chs_intrp_dv = s_intrp_dv && s_intrp_dr_i && ( s_intrp_ch < NR_CHANNELS );
 
 integer i = 0;
@@ -286,6 +285,10 @@ always @(posedge clk) begin : accumulate_fraction
             next_x <= fraction[CNTRW-1];
             // No need to start when fraction >= 1, but fraction is stored for next iteration!
             s0 <= ~fraction[CNTRW-1];
+        end
+        else if ( 0 == step ) begin
+            s0 <= 0; // Fraction step has no value yet!
+            next_x <= 1;
         end
     end
     if ( yx ) begin
