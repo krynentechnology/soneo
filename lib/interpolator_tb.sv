@@ -29,73 +29,82 @@ localparam NR_CHANNELS = 3;
 localparam INPUT_WIDTH = 24;
 localparam FRACTION_WIDTH = 32;
 
-localparam
-    INW   = INPUT_WIDTH, // Input  width
-    OUTW  = INPUT_WIDTH, // Output width
-    CHW   = $clog2( NR_CHANNELS ), // Channel width
-    CHN   = NR_CHANNELS, // Number of channels
-    CNTRW = FRACTION_WIDTH; // Fraction and counter width
+localparam real FACTOR_6DB = 2.0 ** ( INPUT_WIDTH - 2 ); // -6dB
+localparam real FRACTION_0_1 = 2.0 ** ( FRACTION_WIDTH - 1 );
+localparam INW   = INPUT_WIDTH; // Input  width
+localparam OUTW  = INPUT_WIDTH; // Output width
+localparam CHW   = $clog2( NR_CHANNELS ); // Channel width
+localparam CHN   = NR_CHANNELS; // Number of channels
+localparam CNTRW = FRACTION_WIDTH; // Fraction and counter width
 
 reg clk = 0;
 reg rst_n = 0; // Synchronous reset, high when clk is stable!
 
-wire [INW-1:0]   s_intrp_d;
-wire [CHW-1:0]   s_intrp_ch;
-wire             s_intrp_dv;
+reg  [INW-1:0]   s_intrp1_d = 0;
+reg              s_intrp1_dv = 0;
 wire             s_intrp1_dr;
-reg  [CNTRW-1:0] fraction; // 1.CNTRW-1 fraction value
+reg  [CNTRW-1:0] fraction1 = 0; // 1.CNTRW-1 fraction value
+reg  [1:0]       select1 = 0;
 wire [OUTW-1:0]  m_intrp1_d;
-wire [CHW-1:0]   m_intrp1_ch;
 wire             m_intrp1_dv;
-reg              m_intrp1_dr;
+reg              m_intrp1_dr = 1;
 wire             overflow1;
 
 interpolator intrp1(
     .clk(clk),
     .rst_n(rst_n),
-    .s_intrp_d(s_intrp_d),
-    .s_intrp_ch(s_intrp_ch),
-    .s_intrp_dv(s_intrp_dv),
+    .s_intrp_d(s_intrp1_d),
+    .s_intrp_ch(1'b0),
+    .s_intrp_dv(s_intrp1_dv),
     .s_intrp_dr(s_intrp1_dr),
-    .fraction(fraction),
+    .fraction(fraction1),
+    .select(select1),
     .m_intrp_d(m_intrp1_d),
-    .m_intrp_ch(m_intrp1_ch),
     .m_intrp_dv(m_intrp1_dv),
     .m_intrp_dr(m_intrp1_dr),
     .overflow(overflow1));
 
-defparam intrp1.POLYNOMIAL = "3RD_ORDER";
-defparam intrp1.NR_CHANNELS = NR_CHANNELS;
+defparam intrp1.POLYNOMIAL = "LINEAR";
+defparam intrp1.NR_CHANNELS = 1;
 defparam intrp1.INPUT_WIDTH = INPUT_WIDTH;
 defparam intrp1.FRACTION_WIDTH = FRACTION_WIDTH;
 
+reg  [INW-1:0]   s_intrp2_d = 0;
+reg              s_intrp2_dv = 0;
 wire             s_intrp2_dr;
+reg  [CNTRW-1:0] fraction2; // 1.CNTRW-1 fraction value
+reg  [1:0]       select2 = 0;
 wire [OUTW-1:0]  m_intrp2_d;
 wire             m_intrp2_dv;
-reg              m_intrp2_dr;
+reg              m_intrp2_dr = 1;
 wire             overflow2;
 
 interpolator intrp2(
     .clk(clk),
     .rst_n(rst_n),
-    .s_intrp_d(s_intrp_d),
+    .s_intrp_d(s_intrp2_d),
     .s_intrp_ch(1'b0),
-    .s_intrp_dv(s_intrp_dv),
+    .s_intrp_dv(s_intrp2_dv),
     .s_intrp_dr(s_intrp2_dr),
-    .fraction(fraction),
+    .fraction(fraction2),
+    .select(select2),
     .m_intrp_d(m_intrp2_d),
-    .m_intrp_ch(),
     .m_intrp_dv(m_intrp2_dv),
     .m_intrp_dr(m_intrp2_dr),
     .overflow(overflow2));
 
-defparam intrp2.POLYNOMIAL = "3RD_ORDER";
+defparam intrp2.POLYNOMIAL = "2ND_ORDER";
 defparam intrp2.NR_CHANNELS = 1;
 defparam intrp2.INPUT_WIDTH = INPUT_WIDTH;
 defparam intrp2.FRACTION_WIDTH = FRACTION_WIDTH;
 
+wire [INW-1:0]   s_intrp_d;
+wire [CHW-1:0]   s_intrp_ch;
+wire             s_intrp_dv;
 wire             s_intrp3_dr;
+reg  [CNTRW-1:0] fraction; // 1.CNTRW-1 fraction value
 wire [OUTW-1:0]  m_intrp3_d;
+wire [CHW-1:0]   m_intrp3_ch;
 wire             m_intrp3_dv;
 reg              m_intrp3_dr;
 wire             overflow3;
@@ -104,18 +113,18 @@ interpolator intrp3(
     .clk(clk),
     .rst_n(rst_n),
     .s_intrp_d(s_intrp_d),
-    .s_intrp_ch(1'b0),
+    .s_intrp_ch(s_intrp_ch),
     .s_intrp_dv(s_intrp_dv),
     .s_intrp_dr(s_intrp3_dr),
     .fraction(fraction),
     .m_intrp_d(m_intrp3_d),
-    .m_intrp_ch(),
+    .m_intrp_ch(m_intrp3_ch),
     .m_intrp_dv(m_intrp3_dv),
     .m_intrp_dr(m_intrp3_dr),
     .overflow(overflow3));
 
-defparam intrp3.POLYNOMIAL = "4TH_ORDER";
-defparam intrp3.NR_CHANNELS = 1;
+defparam intrp3.POLYNOMIAL = "3RD_ORDER";
+defparam intrp3.NR_CHANNELS = NR_CHANNELS;
 defparam intrp3.INPUT_WIDTH = INPUT_WIDTH;
 defparam intrp3.FRACTION_WIDTH = FRACTION_WIDTH;
 
@@ -134,17 +143,242 @@ interpolator intrp4(
     .s_intrp_dr(s_intrp4_dr),
     .fraction(fraction),
     .m_intrp_d(m_intrp4_d),
-    .m_intrp_ch(),
     .m_intrp_dv(m_intrp4_dv),
     .m_intrp_dr(m_intrp4_dr),
     .overflow(overflow4));
 
-defparam intrp4.POLYNOMIAL = "5TH_ORDER";
+defparam intrp4.POLYNOMIAL = "3RD_ORDER";
 defparam intrp4.NR_CHANNELS = 1;
 defparam intrp4.INPUT_WIDTH = INPUT_WIDTH;
 defparam intrp4.FRACTION_WIDTH = FRACTION_WIDTH;
 
+wire             s_intrp5_dr;
+wire [OUTW-1:0]  m_intrp5_d;
+wire             m_intrp5_dv;
+reg              m_intrp5_dr;
+wire             overflow5;
+
+interpolator intrp5(
+    .clk(clk),
+    .rst_n(rst_n),
+    .s_intrp_d(s_intrp_d),
+    .s_intrp_ch(1'b0),
+    .s_intrp_dv(s_intrp_dv),
+    .s_intrp_dr(s_intrp5_dr),
+    .fraction(fraction),
+    .m_intrp_d(m_intrp5_d),
+    .m_intrp_dv(m_intrp5_dv),
+    .m_intrp_dr(m_intrp5_dr),
+    .overflow(overflow5));
+
+defparam intrp5.POLYNOMIAL = "4TH_ORDER";
+defparam intrp5.NR_CHANNELS = 1;
+defparam intrp5.INPUT_WIDTH = INPUT_WIDTH;
+defparam intrp5.FRACTION_WIDTH = FRACTION_WIDTH;
+
+wire             s_intrp6_dr;
+wire [OUTW-1:0]  m_intrp6_d;
+wire             m_intrp6_dv;
+reg              m_intrp6_dr;
+wire             overflow6;
+
+interpolator intrp6(
+    .clk(clk),
+    .rst_n(rst_n),
+    .s_intrp_d(s_intrp_d),
+    .s_intrp_ch(1'b0),
+    .s_intrp_dv(s_intrp_dv),
+    .s_intrp_dr(s_intrp6_dr),
+    .fraction(fraction),
+    .m_intrp_d(m_intrp6_d),
+    .m_intrp_dv(m_intrp6_dv),
+    .m_intrp_dr(m_intrp6_dr),
+    .overflow(overflow6));
+
+defparam intrp6.POLYNOMIAL = "5TH_ORDER";
+defparam intrp6.NR_CHANNELS = 1;
+defparam intrp6.INPUT_WIDTH = INPUT_WIDTH;
+defparam intrp6.FRACTION_WIDTH = FRACTION_WIDTH;
+
 always #5 clk = ~clk; // 100 MHz clock
+
+/*============================================================================*/
+task setup_linear( input [INPUT_WIDTH-1:0] data,
+                   input [CNTRW-1:0] fraction,
+                   input [1:0] select );
+/*============================================================================*/
+begin
+    wait( s_intrp1_dr )
+    s_intrp1_d = data;
+    fraction1 = fraction;
+    select1 = select;
+    wait ( clk ) @( negedge clk )
+    s_intrp1_dv = 1;
+    wait ( clk ) @( negedge clk )
+    s_intrp1_dv = 0;
+end
+endtask // setup_linear
+
+integer i;
+/*============================================================================*/
+task setup_linear_shapes;
+/*============================================================================*/
+begin
+    m_intrp1_dr = 1;
+    // Triangle
+    setup_linear( 0, 0, 1 ); // n1 = 0
+    for ( i = 0; i < 10; i = i + 1 ) begin
+        setup_linear( FACTOR_6DB, ( FRACTION_0_1 / 20.0 ), 0 );
+        setup_linear( -FACTOR_6DB, ( FRACTION_0_1 / 40.0 ), 0 );
+        setup_linear( 0, ( FRACTION_0_1 / 20.0 ), 0 );
+    end
+    setup_linear( 0, ( FRACTION_0_1 / 20.0 ), 0 );
+    wait( s_intrp1_dr )
+    // Ramp down sawtooth
+    for ( i = 0; i < 10; i = i + 1 ) begin
+        setup_linear( FACTOR_6DB, 0, 1 );
+        setup_linear( -FACTOR_6DB, 0, 3 ); // Use last set fraction, output p0!
+    end
+    setup_linear( 0, 0, 1 ); // n1 = 0
+    setup_linear( 0, ( FRACTION_0_1 / 20.0 ), 0 );
+    wait( s_intrp1_dr )
+    // Ramp up sawtooth
+    for ( i = 0; i < 10; i = i + 1 ) begin
+        setup_linear( -FACTOR_6DB, 0, 1 );
+        setup_linear( FACTOR_6DB, ( FRACTION_0_1 / 20.0 ), 3 ); // Output p0!
+    end
+    setup_linear( 0, 0, 1 ); // n1 = 0
+    setup_linear( 0, ( FRACTION_0_1 / 20.0 ), 0 );
+    wait( s_intrp1_dr )
+    // Square
+    for ( i = 0; i < 10; i = i + 1 ) begin
+        setup_linear( FACTOR_6DB, 0, 1 );
+        setup_linear( FACTOR_6DB, ( FRACTION_0_1 / 20.0 ), 0 );
+        setup_linear( -FACTOR_6DB, 0, 1 );
+        setup_linear( -FACTOR_6DB, 0, 0 ); // Use last set fraction!
+    end
+    setup_linear( 0, 0, 1 ); // n1 = 0
+    setup_linear( 0, ( FRACTION_0_1 / 20.0 ), 0 );
+    wait( s_intrp1_dr )
+    // Pulse
+    for ( i = 0; i < 10; i = i + 1 ) begin
+        setup_linear( FACTOR_6DB, 0, 1 );
+        setup_linear( FACTOR_6DB, ( FRACTION_0_1 / 2.0 ), 0 );
+        setup_linear( 0, 0, 1 ); // n1 = 0
+        setup_linear( 0, ( FRACTION_0_1 / 20.0 ), 0 );
+        setup_linear( -FACTOR_6DB, 0, 1 );
+        setup_linear( -FACTOR_6DB, ( FRACTION_0_1 / 2.0 ), 0 );
+        setup_linear( 0, 0, 1 ); // n1 = 0
+        setup_linear( 0, ( FRACTION_0_1 / 20.0 ), 0 );
+    end
+    wait( s_intrp1_dr );
+end
+endtask // setup_linear_shapes
+
+/*============================================================================*/
+task setup_quadratic( input [INPUT_WIDTH-1:0] data,
+                      input [CNTRW-1:0] fraction,
+                      input [0:0] store,
+                      input [0:0] head );
+/*============================================================================*/
+begin
+    wait( s_intrp2_dr )
+    s_intrp2_d = data;
+    fraction2 = fraction;
+    select2 = {head, store};
+    wait ( clk ) @( negedge clk )
+    s_intrp2_dv = 1;
+    wait ( clk ) @( negedge clk )
+    s_intrp2_dv = 0;
+end
+endtask // setup_linear
+
+integer j;
+/*============================================================================*/
+task setup_quadratic_shapes;
+/*============================================================================*/
+begin
+    m_intrp2_dr = 1;
+    // Circle
+    setup_quadratic( 0, 0, 1, 0 ); // n2 = 0
+    for ( j = 0; j < 5; j = j + 1 ) begin
+         // p1 = 0, p0 = 0/-FACTOR_6DB, n1 = 0, n2 = FACTOR_6DB
+        setup_quadratic( FACTOR_6DB, 0, 0, 0 );
+         // p1 = 0, p0 = 0, n1 = FACTOR_6DB, n2 = 0
+        setup_quadratic( 0, ( FRACTION_0_1 / 20.0 ), 0, 1 ); // Select "head"
+         // p1 = 0, p0 = FACTOR_6DB, n1 = 0, n2 = -FACTOR_6DB
+        setup_quadratic( -FACTOR_6DB, 0, 0, 0 );
+         // p1 = FACTOR_6DB, p0 = 0, n1 = -FACTOR_6DB, n2 = 0
+        setup_quadratic( 0, 0, 0, 1 ); // Select "head"
+    end
+    setup_quadratic( 0, 0, 0, 0 );
+    setup_quadratic( 0, 0, 1, 0 );
+    setup_quadratic( 0, 0, 0, 0 );
+    wait( s_intrp2_dr );
+    // Parabolic
+    for ( j = 0; j < 5; j = j + 1 ) begin
+        setup_quadratic( FACTOR_6DB, 0, 1, 0 ); // n2 = FACTOR_6DB
+         // p1 = 0, p0 = 0, n1 = FACTOR_6DB, n2 = FACTOR_6DB
+        setup_quadratic( FACTOR_6DB, ( FRACTION_0_1 / 20.0 ), 0, 1 ); // Select "head"
+        setup_quadratic( 0, 0, 1, 0 ); // n2 = 0 
+         // p1 = FACTOR_6DB, p0 = FACTOR_6DB, n1 = 0, n2 = 0,
+        setup_quadratic( 0, 0, 0, 0 );
+        setup_quadratic( -FACTOR_6DB, 0, 1, 0 ); // n2 = -FACTOR_6DB
+         // p1 = FACTOR_6DB, p0 = 0, n1 = -FACTOR_6DB, n2 = -FACTOR_6DB
+        setup_quadratic( -FACTOR_6DB, 0, 0, 1 ); // Select "head"
+        setup_quadratic( 0, 0, 1, 0 ); // n2 = 0 
+         // p1 = -FACTOR_6DB, p0 = -FACTOR_6DB, n1 = 0, n2 = 0
+        setup_quadratic( 0, 0, 0, 0 );
+    end
+    setup_quadratic( 0, 0, 1, 0 );
+    setup_quadratic( 0, 0, 1, 0 );
+    setup_quadratic( 0, 0, 0, 0 );
+    wait( s_intrp2_dr );
+    // Cirle spike
+    for ( j = 0; j < 5; j = j + 1 ) begin
+        setup_quadratic( FACTOR_6DB, 0, 1, 0 ); // n2 = FACTOR_6DB
+        setup_quadratic( 0, 0, 1, 0 ); // n2 = 0 
+        setup_quadratic( FACTOR_6DB, 0, 1, 0 ); // n2 = FACTOR_6DB
+         // p1 = FACTOR_6DB, p0 = 0, n1 = FACTOR_6DB, n2 = 0
+        setup_quadratic( 0, ( FRACTION_0_1 / 20.0 ), 0, 0 );
+         // p1 = 0, p0 = FACTOR_6DB, n1 = 0, n2 = FACTOR_6DB
+        setup_quadratic( FACTOR_6DB, 0, 0, 1 ); // Select "head"
+        setup_quadratic( 0, 0, 1, 0 ); // n2 = 0 
+        setup_quadratic( -FACTOR_6DB, 0, 1, 0 ); // n2 = -FACTOR_6DB
+        setup_quadratic( 0, 0, 1, 0 ); // n2 = 0 
+        setup_quadratic( -FACTOR_6DB, 0, 1, 0 ); // n2 = -FACTOR_6DB
+         // p1 = -FACTOR_6DB, p0 = 0, n1 = -FACTOR_6DB, n2 = 0
+        setup_quadratic( 0, 0, 0, 0 );
+        setup_quadratic( -FACTOR_6DB, 0, 1, 0 ); // n2 = -FACTOR_6DB
+        setup_quadratic( 0, 0, 1, 0 ); // n2 = 0 
+         // p1 = 0, p0 = -FACTOR_6DB, n1 = 0, n2 = -FACTOR_6DB
+        setup_quadratic( -FACTOR_6DB, 0, 0, 1 ); // Select "head"
+        setup_quadratic( 0, 0, 1, 0 ); // n2 = 0 
+    end
+    setup_quadratic( 0, 0, 1, 0 );
+    setup_quadratic( 0, 0, 1, 0 );
+    setup_quadratic( 0, 0, 0, 0 );
+    wait( s_intrp2_dr );
+    // Parabolic spike
+    setup_quadratic( 0, 0, 1, 0 ); // n2 = 0
+    for ( j = 0; j < 5; j = j + 1 ) begin
+        setup_quadratic( FACTOR_6DB, 0, 1, 0 ); // n2 = FACTOR_6DB
+         // p1 = 0, p0 = 0/-FACTOR_6DB, n1 = FACTOR_6DB, n2 = 0
+        setup_quadratic( 0, ( FRACTION_0_1 / 20.0 ), 0, 0 );
+         // p1 = 0, p0 = FACTOR_6DB, n1 = 0, n2 = 0
+        setup_quadratic( 0, 0, 0, 1 ); // Select "head"
+        setup_quadratic( -FACTOR_6DB, 0, 1, 0 ); // n2 = -FACTOR_6DB
+         // p1 = 0, p0 = 0, n1 = -FACTOR_6DB, n2 = 0
+        setup_quadratic( 0, 0, 0, 0 );
+         // p1 = 0, p0 = -FACTOR_6DB, n1 = 0, n2 = 0
+        setup_quadratic( 0, 0, 0, 1 ); // Select "head"
+    end
+    setup_quadratic( 0, 0, 1, 0 );
+    setup_quadratic( 0, 0, 1, 0 );
+    setup_quadratic( 0, 0, 0, 0 );
+    wait( s_intrp2_dr );
+end
+endtask // setup_linear_shapes
 
 reg sg_enabled; // Sine generator
 reg swg_enabled; // Sweep generator
@@ -156,10 +390,14 @@ reg neg_minus_6dB; // To test continuous DC -6dB negative value
 initial begin
 /*============================================================================*/
     rst_n = 0;
-    m_intrp1_dr = 0;
-    m_intrp2_dr = 0;
+    s_intrp1_dv = 0;
+    s_intrp2_dv = 0;
     m_intrp3_dr = 0;
     m_intrp4_dr = 0;
+    m_intrp5_dr = 0;
+    m_intrp6_dr = 0;
+    fraction1 = 0;
+    fraction2 = 0;
     fraction = 0;
     sg_enabled = 1;
     swg_enabled = 0;
@@ -171,30 +409,34 @@ initial begin
     wait ( clk ) @( negedge clk );
     $display( "Sine generator enabled" );
     rst_n = 1;
-    m_intrp1_dr = 1;
+    fork // Parallel operation
+        setup_linear_shapes;
+        setup_quadratic_shapes;
+    join
+    m_intrp3_dr = 1;
     fraction[CNTRW-2] = 1; // fraction = 0.5
     wait ( s_intrp_dv );
-    wait ( !s_intrp1_dr );
+    wait ( !s_intrp3_dr );
     fraction = 0; // fraction = 0;
-    wait ( !s_intrp1_dr ) @( negedge s_intrp1_dr );
-    wait ( !s_intrp1_dr ) @( negedge s_intrp1_dr );
-    wait ( !s_intrp1_dr ) @( negedge s_intrp1_dr );
-    wait ( !s_intrp1_dr ) @( negedge s_intrp1_dr );
+    wait ( !s_intrp3_dr ) @( negedge s_intrp3_dr );
+    wait ( !s_intrp3_dr ) @( negedge s_intrp3_dr );
+    wait ( !s_intrp3_dr ) @( negedge s_intrp3_dr );
+    wait ( !s_intrp3_dr ) @( negedge s_intrp3_dr );
     pos_minus_6dB = 0;
     neg_minus_6dB = 1;
-    wait ( !s_intrp1_dr ) @( negedge s_intrp1_dr );
-    wait ( !s_intrp1_dr ) @( negedge s_intrp1_dr );
-    wait ( !s_intrp1_dr ) @( negedge s_intrp1_dr );
-    wait ( !s_intrp1_dr ) @( negedge s_intrp1_dr );
+    wait ( !s_intrp3_dr ) @( negedge s_intrp3_dr );
+    wait ( !s_intrp3_dr ) @( negedge s_intrp3_dr );
+    wait ( !s_intrp3_dr ) @( negedge s_intrp3_dr );
+    wait ( !s_intrp3_dr ) @( negedge s_intrp3_dr );
     pos_minus_6dB = 0;
     neg_minus_6dB = 0;
     #100000 // 100us
     mute = 1;
     $display( "Mute" );
     #5000 // 5us
-    m_intrp2_dr = 1;
-    m_intrp3_dr = 1;
     m_intrp4_dr = 1;
+    m_intrp5_dr = 1;
+    m_intrp6_dr = 1;
     sg_enabled = 0;
     swg_enabled = 1;
     mute = 0;
@@ -227,29 +469,29 @@ always @(posedge clk) begin : collect_intrp_data
         endcase
     end
     if ( sg_enabled ) begin
-        if ( m_intrp1_dv ) begin
-            case ( m_intrp1_ch )
+        if ( m_intrp3_dv ) begin
+            case ( m_intrp3_ch )
                 0 : begin
-                    data_intrp_out_0 <= m_intrp1_d;
+                    data_intrp_out_0 <= m_intrp3_d;
                 end
                 1 : begin
-                    data_intrp_out_1 <= m_intrp1_d;
+                    data_intrp_out_1 <= m_intrp3_d;
                 end
                 2 : begin
-                    data_intrp_out_2 <= m_intrp1_d;
+                    data_intrp_out_2 <= m_intrp3_d;
                 end
             endcase
         end
     end
     else begin
-        if ( m_intrp2_dv ) begin
-            data_intrp_out_0 <= m_intrp2_d;
-        end
-        if ( m_intrp3_dv ) begin
-            data_intrp_out_1 <= m_intrp3_d;
-        end
         if ( m_intrp4_dv ) begin
-            data_intrp_out_2 <= m_intrp4_d;
+            data_intrp_out_0 <= m_intrp4_d;
+        end
+        if ( m_intrp5_dv ) begin
+            data_intrp_out_1 <= m_intrp5_d;
+        end
+        if ( m_intrp6_dv ) begin
+            data_intrp_out_2 <= m_intrp6_d;
         end
     end
 end
@@ -280,7 +522,7 @@ end
 always @(posedge clk) begin : sine_generator
 /*============================================================================*/
     if ( sg_enabled ) begin
-        sg_dv <= sg_dv & ~s_intrp1_dr;
+        sg_dv <= sg_dv & ~s_intrp3_dr;
         if ( !sg_dv ) begin
             if ( pos_minus_6dB ) begin
                 sg_d <= 0;
@@ -297,7 +539,7 @@ always @(posedge clk) begin : sine_generator
             end
             sg_dv <= 1;
         end
-        else if ( s_intrp1_dr && !( pos_minus_6dB || neg_minus_6dB )) begin
+        else if ( s_intrp3_dr && !( pos_minus_6dB || neg_minus_6dB )) begin
             sg_ch <= sg_ch + 1;
             if (( NR_CHANNELS - 1 ) == sg_ch ) begin
                 sg_ch <= 0;
@@ -332,9 +574,9 @@ always @(posedge clk) begin : sweep_generator
 /*============================================================================*/
     if ( swg_enabled ) begin
         if ( swg_step < NR_STEPS ) begin
-            swg_dv <= swg_dv & ~( s_intrp2_dr & s_intrp3_dr & s_intrp4_dr );
+            swg_dv <= swg_dv & ~( s_intrp4_dr & s_intrp5_dr & s_intrp6_dr );
             if ( !swg_dv ) begin
-                swg_delta = swg_step / $itor( NR_STEPS ); 
+                swg_delta = swg_step / $itor( NR_STEPS );
                 swg_t = F_INTERVAL * swg_delta;
                 swg_phase = MATH_2_PI * swg_t * ( F_START + (( F_END - F_START ) * swg_delta / 2 ));
                 swg_d_c = FACTOR_1 * $sin( swg_phase );
@@ -353,7 +595,7 @@ end // sweep_generator
 
 assign s_intrp_d = ( sg_d | swg_d ) & { ( INPUT_WIDTH ){~mute}};
 assign s_intrp_ch = sg_ch;
-assign s_intrp_dv = sg_dv | ( swg_dv & s_intrp2_dr & s_intrp3_dr & s_intrp4_dr );
+assign s_intrp_dv = sg_dv | ( swg_dv & s_intrp4_dr & s_intrp5_dr & s_intrp6_dr );
 
 /*============================================================================*/
 initial begin // Generate VCD file for GTKwave

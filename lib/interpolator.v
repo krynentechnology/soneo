@@ -35,14 +35,62 @@
  *  Determination n-th order polynomial coefficients requires n+1 data points.
  *  When the polynomial coefficients are known y(x) can be calculated:
  *
- *    y(x) = ax3 + bx2 + cx + d   // 3rd order polynomial
- *    y(x) = x(x(ax + b) + c) + d
- *       x = -1, 0, 1, 2          // Determine coefficients by substitution
+ *    y(x) = ax + b  // Linear, 1st order polynomial
+ *       x = 0, 1    // Determine coefficients by substitution
  *
- *    y(-1) -> p1 = -a + b - c + d            a = (-p1 + 3p0 - 3n1 + n2)/6
- *    y(0)  -> p0 = d                         b = (p1 - 2p0 + n1)/2
- *    y(1)  -> n1 = a + b + c + d             c = (-2p1 - 3p0 + 6n1 - n2)/6
- *    y(2)  -> n2 = 8a + 4b + 2c + d          d = p0
+ *    y(0) -> p0 = b          a = n1 - p0
+ *    y(1) -> n1 = a + b      b = p0
+ *
+ *  Interpolates between p0 and n1:
+ *
+ *    float interpolate( float x, p0, n1 )
+ *    {
+ *        return ( // return y(x)
+ *            p0 +               // b
+ *            x * ( n1 - p0 ));  // a
+ *    }
+ *
+ *    y(x) = ax2 + bx + c          // Quadratic, 2nd order polynomial
+ *    y(x) = x(ax + b) + c
+ *       x = -1, 0, 1  "tail"      // Determine coefficients by substitution
+ *
+ *    y(-1) -> p1 = a - b + c      a = (p1 - 2p0 + n1)/2
+ *    y(0)  -> p0 = c              b = (-p1 + n1)/2
+ *    y(1)  -> n1 = a + b + c      c = p0
+ *
+ *       x = 0, 1, 2  "head"       // Determine coefficients by substitution
+ *
+ *    y(0)  -> p0 = c              a = (p0 - 2n1 + n2)/2
+ *    y(1)  -> n1 = a + b + c      b = (-3p0 + 4n1 - n2)/2
+ *    y(2)  -> n2 = 4a + 2b + c    c = p0
+ *
+ *  Interpolates between p0 and n1 taking the previous (p1) or next (n2) point
+ *  into account:
+ *
+ *    float interpolate( float x, p1, p0, n1 ) // "tail"
+ *    {
+ *        return ( // return y(x)
+ *            p0 +                               // c
+ *            x * ((( -p1 + n1 ) / 2 ) +         // b
+ *              x * (( p1 - 2p0 + n1 ) / 2 )));  // a
+ *    }
+ *
+ *    float interpolate( float x, p0, n1, n2 ) // "head"
+ *    {
+ *        return ( // return y(x)
+ *            p0 +                               // c
+ *            x * ((( -3p0 + 2n1 - n2 ) / 2 ) +  // b
+ *              x * (( p0 - n1 + n2 ) / 2 )));   // a
+ *    }
+ *
+ *    y(x)  = ax3 + bx2 + cx + d   // 3rd order polynomial
+ *    y(x)  = x(x(ax + b) + c) + d
+ *        x = -1, 0, 1, 2          // Determine coefficients by substitution
+ *
+ *    y(-1) -> p1 = -a + b - c + d        a = (-p1 + 3p0 - 3n1 + n2)/6
+ *    y(0)  -> p0 = d                     b = (p1 - 2p0 + n1)/2
+ *    y(1)  -> n1 = a + b + c + d         c = (-2p1 - 3p0 + 6n1 - n2)/6
+ *    y(2)  -> n2 = 8a + 4b + 2c + d      d = p0
  *
  *  Interpolates between p0 and n1 taking the previous (p1) and next (n2) points
  *  into account:
@@ -117,6 +165,11 @@
  *  When there is a single channel (NR_CHANNELS=1), the data output is semi-
  *  synchronous what helps the process visualization in graphical simulation
  *  display.
+ *
+ *  The linear and quadratic interpolation could be used for wave generation of
+ *  shapes like triangle, ramp up/down sawtooth, square (with variable duty
+ *  cycle - pulse), circular/parabolic shapes and spikes etc. The output could
+ *  also be used for amplitude (volume) control e.g. fade in/out.
  **/
 
 `resetall
@@ -124,7 +177,7 @@
 `default_nettype none
 
 module interpolator #(
-    parameter POLYNOMIAL     = "3RD_ORDER", // "4TH_ORDER", "5TH_ORDER"
+    parameter POLYNOMIAL     = "3RD_ORDER", // "LINEAR", "2ND_ORDER" "4TH_ORDER", "5TH_ORDER"
     parameter INPUT_WIDTH    = 24, // Input width
     parameter FRACTION_WIDTH = 32, // >= INPUT_WIDTH + 1
     parameter NR_CHANNELS    = 2 ) // Number of interpolation channels
@@ -132,6 +185,9 @@ module interpolator #(
     clk, rst_n, // Synchronous reset, high when clk is stable!
     s_intrp_d, s_intrp_ch, s_intrp_dv, s_intrp_dr, // _d = data, _ch = channel id
     fraction, // Fraction represents max. value 2.0 to allow down conversions
+    select, // 2'b01 = just store data (when fraction = 0), skip interpolation!
+            // 2'b10 = "head" quadratic interpolation
+            // 2'b11 = store and output p0 value before start interpolation
     m_intrp_d, m_intrp_ch, m_intrp_dv, m_intrp_dr, // _dv = data valid, _dr = data ready
     overflow
     );
@@ -167,6 +223,7 @@ input  wire [CHW-1:0]   s_intrp_ch;
 input  wire             s_intrp_dv;
 output wire             s_intrp_dr;
 input  wire [CNTRW-1:0] fraction; // 1.CNTRW-1 fraction value
+input  wire [1:0]       select;
 output wire [OUTW-1:0]  m_intrp_d;
 output wire [CHW-1:0]   m_intrp_ch;
 output wire             m_intrp_dv;
@@ -182,11 +239,17 @@ localparam real ONE_SIXTH = ( FACTOR_1 / 6.0 ) + 0.5; // 1/6 factor
 localparam real ONE_TWELFTH = ( FACTOR_1 / 12.0 ) + 0.5; // 1/12 factor
 localparam real ONE_TWENTY_FOURTH = ( FACTOR_1 / 24.0 ) + 0.5; // 1/24 factor
 
+localparam [1:0] STORE = 2'b01;
+localparam [1:0] HEAD = 2'b10;
+localparam [1:0] OUTPUT_P0 = 2'b11; // Store and output p0!
+
 // Parameter checks
 /*============================================================================*/
 initial begin : param_check
 /*============================================================================*/
-    if ( POLYNOMIAL != "3RD_ORDER" &&
+    if ( POLYNOMIAL != "LINEAR" &&
+         POLYNOMIAL != "2ND_ORDER" &&
+         POLYNOMIAL != "3RD_ORDER" &&
          POLYNOMIAL != "4TH_ORDER" &&
          POLYNOMIAL != "5TH_ORDER" ) begin
         $display( "Select one of the interpolation implementations!" );
@@ -219,6 +282,8 @@ reg s0_i = 0;
 reg s0_ii = 0;
 reg yx = 0;
 reg next_x = 0;
+reg output_p0 = 0;
+reg head = 0;
 
 reg s_intrp_dr_i = 0;
 reg [CHW-1:0] m_intrp_ch_i = 0;
@@ -254,8 +319,24 @@ always @(posedge clk) begin : fifo
     if ( chs_intrp_dv ) begin
         s_intrp_dr_i <= 0;
         m_intrp_ch_i <= s_intrp_ch;
-        { p2[ s_intrp_ch ], p1[ s_intrp_ch ], p0[ s_intrp_ch ], n1[ s_intrp_ch ], n2[ s_intrp_ch ] } <=
-            { p1_c, p0_c, n1_c, n2_c, s_intrp_d };
+        if ( POLYNOMIAL == "LINEAR" ) begin // Conditional synthesis!
+            { p0[ s_intrp_ch ], n1[ s_intrp_ch ] } <= { n1_c, s_intrp_d };
+        end
+        if (( POLYNOMIAL == "2ND_ORDER" ) ||
+            ( POLYNOMIAL == "3RD_ORDER" ) ||
+            ( POLYNOMIAL == "5TH_ORDER" )) begin // Conditional synthesis!
+            { p1[ s_intrp_ch ],
+              p0[ s_intrp_ch ],
+              n1[ s_intrp_ch ],
+              n2[ s_intrp_ch ] } <= { p0_c, n1_c, n2_c, s_intrp_d };
+        end
+        if ( POLYNOMIAL == "4TH_ORDER" ) begin // Conditional synthesis!
+            { p2[ s_intrp_ch ],
+              p1[ s_intrp_ch ],
+              p0[ s_intrp_ch ],
+              n1[ s_intrp_ch ],
+              n2[ s_intrp_ch ] } <= { p1_c, p0_c, n1_c, n2_c, s_intrp_d };
+        end
     end
     if ( !rst_n ) begin
         s_intrp_dr_i <= 1;
@@ -277,6 +358,7 @@ always @(posedge clk) begin : accumulate_fraction
     s0_ii <= s0_i;
     s0 <= s0_ii; // Two clock cycles delay for same s0/yx timing as input
     next_x <= 0;
+    output_p0 <= 0;
     if ( chs_intrp_dv ) begin
         s0 <= ~next_x_c;
         if ( fraction != 0 ) begin // Ignore fraction when zero!
@@ -286,9 +368,15 @@ always @(posedge clk) begin : accumulate_fraction
             // No need to start when fraction >= 1, but fraction is stored for next iteration!
             s0 <= ~fraction[CNTRW-1];
         end
-        else if ( 0 == step ) begin
+        else if (( STORE == select ) || ( 0 == step )) begin
             s0 <= 0; // Fraction step has no value yet!
             next_x <= 1;
+        end
+        if ( POLYNOMIAL == "LINEAR" ) begin // Conditional synthesis!
+            output_p0 <= ( OUTPUT_P0 == select );
+        end
+        if ( POLYNOMIAL == "2ND_ORDER" ) begin // Conditional synthesis!
+            head <= ( HEAD == select );
         end
     end
     if ( yx ) begin
@@ -305,6 +393,7 @@ always @(posedge clk) begin : accumulate_fraction
         next_x <= 0;
         step <= 0;
         acc_fraction <= 0;
+        head <= 0;
     end
 end // accumulate_fraction
 
@@ -314,6 +403,8 @@ wire signed [ASW-1:0] p0_x_3;
 wire signed [ASW-1:0] p0_x_6;
 wire signed [ASW-1:0] p1_plus_n1__x_4;
 wire signed [ASW-1:0] p1_minus_n1__x_2;
+wire signed [ASW-1:0] n1_x_2;
+wire signed [ASW-1:0] n1_x_4;
 wire signed [ASW-1:0] n1_x_3;
 wire signed [ASW-1:0] n1_x_6;
 wire signed [ASW-1:0] n1_minus_p0;
@@ -335,12 +426,14 @@ reg signed  [ASW-1:0] c_x_24 = 0;
 reg signed  [ASW-1:0] d = 0;
 reg signed  [ASW-1:0] d_x_12 = 0;
 reg signed  [ASW-1:0] e = 0;
-reg signed  [ASW-1:0] d3rd_e4th_f5th = 0;
+reg signed  [ASW-1:0] b1st_c2nd_d3rd_e4th_f5th = 0;
 
 assign p0_x_2 = p0_c << 1;
 assign p0_x_3 = p0_x_2 + p0_c;
 assign p0_x_6 = p0_x_3 << 1;
-assign n1_x_3 = ( n1_c << 1 ) + n1_c;
+assign n1_x_2 = n1_c << 1;
+assign n1_x_4 = n1_x_2 << 1;
+assign n1_x_3 = n1_x_2 + n1_c;
 assign n1_x_6 = n1_x_3 << 1;
 assign p1_plus_n1__x_4 = ( p1_c + n1_c ) << 2;
 assign p1_minus_n1__x_2 = ( p1_c - n1_c ) << 1;
@@ -363,6 +456,19 @@ always @(*) begin : multiplication_and_calc_coeff
 /*============================================================================*/
     product_c = ( p_arg_1 * p_arg_2 ) + // Round to zero (for negative values)!
         $signed( {{( ASW + 1 ){1'b0}}, {( CNTRW - 1 ){p_arg_2[ASW-1]}}} );
+    if ( POLYNOMIAL == "2ND_ORDER" ) begin // Conditional synthesis!
+        if ( head ) begin // "head" interpolation
+            // 2a = p0 - 2n1 + n2
+            a     = ( p0_c - n1_x_2 + n2_c ) >>> 1; // Sign extension shift!
+            // 2b = -3p0 + 4n1 - n2
+            b     = ( -p0_x_3 + n1_x_4 - n2_c ) >>> 1; // Sign extension shift!
+        end else begin // Default "tail" interpolation
+            // 2a = p1 - 2p0 + n1
+            a     = ( p1_c - p0_x_2 + n1_c ) >>> 1; // Sign extension shift!
+            // 2b = -p1 + n1
+            b     = ( -p1_c + n1_c ) >>> 1; // Sign extension shift!
+        end
+    end
     if ( POLYNOMIAL == "3RD_ORDER" ) begin // Conditional synthesis!
         // 6a = -p1 + 3p0 - 3n1 + n2
         a_x_6 = -p1_c + p0_x_3 - n1_x_3 + n2_c;
@@ -393,13 +499,15 @@ always @(*) begin : multiplication_and_calc_coeff
         // e = n1 - p1
         e = n1_c - p1_c;
     end
-    d3rd_e4th_f5th = {{ ( ASW - INW ){p0_c[INW-1]}}, p0_c};
+    b1st_c2nd_d3rd_e4th_f5th = {{ ( ASW - INW ){p0_c[INW-1]}}, p0_c};
 end // multiplication_and_calc_coeff
 
 // Boolean states
 reg ax_x_6 = 0;
 reg ax_x_24 = 0;
 reg ax = 0;
+reg ax_i = 0;
+reg ax_ii = 0;
 reg ax_plus_b = 0;
 reg ax_plus_b_x_24 = 0;
 reg axx_bx_c = 0;
@@ -424,7 +532,8 @@ assign x0_1 = { 1'b0, acc_fraction[CNTRW-2:0] };
 wire signed [ASW-1:0] yx_i;
 assign yx_i = product_c[PW-2:CNTRW-1] +
     (( POLYNOMIAL == "3RD_ORDER" ) ? cx_plus_d_r :
-        (( POLYNOMIAL == "4TH_ORDER" ) ? cxx_plus_dx_plus_e_r : d3rd_e4th_f5th )); // 5TH_ORDER
+        (( POLYNOMIAL == "4TH_ORDER" ) ? cxx_plus_dx_plus_e_r :
+            b1st_c2nd_d3rd_e4th_f5th )); // LINEAR, 2ND_ORDER, 5TH_ORDER
 wire overflow_xy_i_p; // Positive values
 assign overflow_xy_i_p = !yx_i[ASW-1] && |yx_i[ASW-2:INW-1];
 wire overflow_xy_i_n; // Negative values
@@ -446,8 +555,41 @@ reg signed [OUTW-1:0] m_intrp_d_i = 0;
 always @(posedge clk) begin : calc_y
 /*============================================================================*/
     m_intrp_dv_i <= m_intrp_dv_i & !m_intrp_dr;
+    if ( POLYNOMIAL == "LINEAR" ) begin // Conditional synthesis!
+        // y(x) = ax + b
+        ax_i <= 0;
+        ax_ii <= ax_i;
+        ax <= s0 | ax_ii;
+        if ( output_p0 && s0 ) begin
+            ax <= 0; // Delay two clock cycles to match "LINEAR" timing!
+            ax_i <= 1;
+        end
+        if ( ax ) begin
+            p_arg_1 <= x0_1;
+            p_arg_2 <= n1_minus_p0;
+        end
+        yx <= ax;
+        if ( output_p0 ) begin
+            m_intrp_d_i <= p0_c;
+            m_intrp_dv_i <= 1;
+        end
+    end
+    if ( POLYNOMIAL == "2ND_ORDER" ) begin // Conditional synthesis!
+        // y(x) = x(ax + b) + c
+        ax <= s0;
+        if ( ax ) begin
+            p_arg_1 <= x0_1;
+            p_arg_2 <= a;
+        end
+        ax_plus_b <= ax;
+        if ( ax_plus_b ) begin
+            p_arg_1 <= x0_1;
+            p_arg_2 <= product_c[PW-2:CNTRW-1] + b;
+        end
+        yx <= ax_plus_b;
+    end
     if ( POLYNOMIAL == "3RD_ORDER" ) begin // Conditional synthesis!
-        // y(x)  = x(x(ax + b) + c) + d
+        // y(x) = x(x(ax + b) + c) + d
         ax_x_6 <= s0;
         if ( ax_x_6 ) begin
             p_arg_1 <= x0_1;
@@ -473,7 +615,7 @@ always @(posedge clk) begin : calc_y
         if ( axx_plus_bx ) begin
             p_arg_1 <= x0_1;
             p_arg_2 <= ax_plus_b_r;
-            cx_plus_d_r <= product_c[PW-2:CNTRW-1] + d3rd_e4th_f5th;
+            cx_plus_d_r <= product_c[PW-2:CNTRW-1] + b1st_c2nd_d3rd_e4th_f5th;
         end
         axxx_plus_bxx <= axx_plus_bx;
         if ( axxx_plus_bxx ) begin
@@ -514,7 +656,7 @@ always @(posedge clk) begin : calc_y
         if ( axx_plus_bx ) begin
             // p_arg_1 <= x0_1;
             p_arg_2 <= ax_plus_b_r;
-            cxx_plus_dx_plus_e_r <= product_c[PW-2:CNTRW-1] + d3rd_e4th_f5th;
+            cxx_plus_dx_plus_e_r <= product_c[PW-2:CNTRW-1] + b1st_c2nd_d3rd_e4th_f5th;
         end
         axxx_plus_bxx <= axx_plus_bx;
         if ( axxx_plus_bxx ) begin
@@ -529,7 +671,7 @@ always @(posedge clk) begin : calc_y
         yx <= axxxx_plus_bxxx;
     end
     if ( POLYNOMIAL == "5TH_ORDER" ) begin // Conditional synthesis!
-        // y(x) = ax5 + bx4 + cx3 + dx2 + ex + f  // 5th order polynomial
+        // y(x) = x(x(x(x(ax + b) + c) + d) + e) + f  // 5th order polynomial
         ax <= s0;
         if ( ax ) begin
             p_arg_1 <= x0_1;
