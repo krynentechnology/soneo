@@ -79,8 +79,8 @@
  *    {
  *        return ( // return y(x)
  *            p0 +                               // c
- *            x * ((( -3p0 + 2n1 - n2 ) / 2 ) +  // b
- *              x * (( p0 - n1 + n2 ) / 2 )));   // a
+ *            x * ((( -3p0 + 4n1 - n2 ) / 2 ) +  // b
+ *              x * (( p0 - 2n1 + n2 ) / 2 )));  // a
  *    }
  *
  *    y(x)  = ax3 + bx2 + cx + d   // 3rd order polynomial
