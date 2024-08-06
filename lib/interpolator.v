@@ -192,6 +192,10 @@ module interpolator #(
     overflow
     );
 
+parameter [1:0] STORE = 2'b01;
+parameter [1:0] HEAD = 2'b10;
+parameter [1:0] OUTPUT_P0 = 2'b11; // Store and output p0!
+
 localparam MAX_CLOG2_WIDTH = 8;
 /*============================================================================*/
 function integer clog2( input [MAX_CLOG2_WIDTH-1:0] value );
@@ -238,10 +242,6 @@ localparam real FACTOR_1 = 2.0 ** ( CNTRW - 1 ); // 1.0 == power 2 fraction widt
 localparam real ONE_SIXTH = ( FACTOR_1 / 6.0 ) + 0.5; // 1/6 factor
 localparam real ONE_TWELFTH = ( FACTOR_1 / 12.0 ) + 0.5; // 1/12 factor
 localparam real ONE_TWENTY_FOURTH = ( FACTOR_1 / 24.0 ) + 0.5; // 1/24 factor
-
-localparam [1:0] STORE = 2'b01;
-localparam [1:0] HEAD = 2'b10;
-localparam [1:0] OUTPUT_P0 = 2'b11; // Store and output p0!
 
 // Parameter checks
 /*============================================================================*/

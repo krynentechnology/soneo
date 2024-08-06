@@ -226,7 +226,7 @@ task setup_linear_shapes;
 begin
     m_intrp1_dr = 1;
     // Triangle
-    setup_linear( 0, 0, 1 ); // n1 = 0
+    setup_linear( 0, 0, intrp1.STORE ); // n1 = 0
     for ( i = 0; i < 10; i = i + 1 ) begin
         setup_linear( FACTOR_6DB, ( FRACTION_0_1 / 20.0 ), 0 );
         setup_linear( -FACTOR_6DB, ( FRACTION_0_1 / 40.0 ), 0 );
@@ -236,39 +236,39 @@ begin
     wait( s_intrp1_dr )
     // Ramp down sawtooth
     for ( i = 0; i < 10; i = i + 1 ) begin
-        setup_linear( FACTOR_6DB, 0, 1 );
-        setup_linear( -FACTOR_6DB, 0, 3 ); // Use last set fraction, output p0!
+        setup_linear( FACTOR_6DB, 0, intrp1.STORE );
+        setup_linear( -FACTOR_6DB, 0, intrp1.OUTPUT_P0 ); // Use last set fraction, output p0!
     end
-    setup_linear( 0, 0, 1 ); // n1 = 0
+    setup_linear( 0, 0, intrp1.STORE ); // n1 = 0
     setup_linear( 0, ( FRACTION_0_1 / 20.0 ), 0 );
     wait( s_intrp1_dr )
     // Ramp up sawtooth
     for ( i = 0; i < 10; i = i + 1 ) begin
-        setup_linear( -FACTOR_6DB, 0, 1 );
-        setup_linear( FACTOR_6DB, ( FRACTION_0_1 / 20.0 ), 3 ); // Output p0!
+        setup_linear( -FACTOR_6DB, 0, intrp1.STORE );
+        setup_linear( FACTOR_6DB, ( FRACTION_0_1 / 20.0 ), intrp1.OUTPUT_P0 ); // Output p0!
     end
-    setup_linear( 0, 0, 1 ); // n1 = 0
+    setup_linear( 0, 0, intrp1.STORE ); // n1 = 0
     setup_linear( 0, ( FRACTION_0_1 / 20.0 ), 0 );
     wait( s_intrp1_dr )
     // Square
     for ( i = 0; i < 10; i = i + 1 ) begin
-        setup_linear( FACTOR_6DB, 0, 1 );
+        setup_linear( FACTOR_6DB, 0, intrp1.STORE );
         setup_linear( FACTOR_6DB, ( FRACTION_0_1 / 20.0 ), 0 );
-        setup_linear( -FACTOR_6DB, 0, 1 );
+        setup_linear( -FACTOR_6DB, 0, intrp1.STORE );
         setup_linear( -FACTOR_6DB, 0, 0 ); // Use last set fraction!
     end
-    setup_linear( 0, 0, 1 ); // n1 = 0
+    setup_linear( 0, 0, intrp1.STORE ); // n1 = 0
     setup_linear( 0, ( FRACTION_0_1 / 20.0 ), 0 );
     wait( s_intrp1_dr )
     // Pulse
     for ( i = 0; i < 10; i = i + 1 ) begin
-        setup_linear( FACTOR_6DB, 0, 1 );
+        setup_linear( FACTOR_6DB, 0, intrp1.STORE );
         setup_linear( FACTOR_6DB, ( FRACTION_0_1 / 2.0 ), 0 );
-        setup_linear( 0, 0, 1 ); // n1 = 0
+        setup_linear( 0, 0, intrp1.STORE ); // n1 = 0
         setup_linear( 0, ( FRACTION_0_1 / 20.0 ), 0 );
-        setup_linear( -FACTOR_6DB, 0, 1 );
+        setup_linear( -FACTOR_6DB, 0, intrp1.STORE );
         setup_linear( -FACTOR_6DB, ( FRACTION_0_1 / 2.0 ), 0 );
-        setup_linear( 0, 0, 1 ); // n1 = 0
+        setup_linear( 0, 0, intrp1.STORE ); // n1 = 0
         setup_linear( 0, ( FRACTION_0_1 / 20.0 ), 0 );
     end
     wait( s_intrp1_dr );
@@ -291,7 +291,7 @@ begin
     wait ( clk ) @( negedge clk )
     s_intrp2_dv = 0;
 end
-endtask // setup_linear
+endtask // setup_quadratic
 
 integer j;
 /*============================================================================*/
@@ -315,7 +315,7 @@ begin
     setup_quadratic( 0, 0, 1, 0 );
     setup_quadratic( 0, 0, 0, 0 );
     wait( s_intrp2_dr );
-    // Parabolic
+    // Parabola
     for ( j = 0; j < 5; j = j + 1 ) begin
         setup_quadratic( FACTOR_6DB, 0, 1, 0 ); // n2 = FACTOR_6DB
          // p1 = 0, p0 = 0, n1 = FACTOR_6DB, n2 = FACTOR_6DB
@@ -334,7 +334,7 @@ begin
     setup_quadratic( 0, 0, 1, 0 );
     setup_quadratic( 0, 0, 0, 0 );
     wait( s_intrp2_dr );
-    // Cirle spike
+    // Circular spike
     for ( j = 0; j < 5; j = j + 1 ) begin
         setup_quadratic( FACTOR_6DB, 0, 1, 0 ); // n2 = FACTOR_6DB
         setup_quadratic( 0, 0, 1, 0 ); // n2 = 0 
@@ -378,7 +378,7 @@ begin
     setup_quadratic( 0, 0, 0, 0 );
     wait( s_intrp2_dr );
 end
-endtask // setup_linear_shapes
+endtask // setup_quadratic_shapes
 
 reg sg_enabled; // Sine generator
 reg swg_enabled; // Sweep generator
