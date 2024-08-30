@@ -21,6 +21,7 @@ if "%1"=="" (
   iverilog -o equalizer_tb.out -I .. ..\equalizer.v ..\equalizer_tb.sv
   iverilog -o interpolator_tb.out -I .. ..\interpolator.v ..\interpolator_tb.sv
   iverilog -o sine_wg_cor_tb.out -I .. ..\sine_wg_cor.v ..\sine_wg_cor_tb.sv
+  iverilog -o spi_tb.out -I .. ..\spi_master.v ..\spi_slave.v ..\spi_io.v ..\spi_tb.sv
 )  
 if not "%1"=="" (
   iverilog -DGTK_WAVE -o aes_tb.out -I .. ..\aes_dec.v ..\aes_enc.v ..\aes_tb.sv
@@ -28,11 +29,13 @@ if not "%1"=="" (
   iverilog -DGTK_WAVE -o equalizer_tb.out -I .. ..\equalizer.v ..\equalizer_tb.sv
   iverilog -DGTK_WAVE -o interpolator_tb.out -I .. ..\interpolator.v ..\interpolator_tb.sv
   iverilog -DGTK_WAVE -o sine_wg_cor_tb.out -I .. ..\sine_wg_cor.v ..\sine_wg_cor_tb.sv
+  iverilog -DGTK_WAVE -o spi_tb.out -I .. ..\spi_master.v ..\spi_slave.v ..\spi_io.v ..\spi_tb.sv
 )  
 if exist aes_tb.out vvp aes_tb.out
 if exist apcm_sbc4_tb.out vvp apcm_sbc4_tb.out
 if exist equalizer_tb.out vvp equalizer_tb.out
 if exist interpolator_tb.out vvp interpolator_tb.out
 if exist sine_wg_cor_tb.out vvp sine_wg_cor_tb.out
+if exist spi_tb.out vvp spi_tb.out
 cd ..
 :END

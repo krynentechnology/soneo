@@ -23,7 +23,9 @@
 `timescale 1ns / 1ps
 `default_nettype none
 
+/*============================================================================*/
 module interpolator_tb;
+/*============================================================================*/
 
 localparam NR_CHANNELS = 3;
 localparam INPUT_WIDTH = 24;
@@ -404,8 +406,8 @@ initial begin
     mute = 0;
     pos_minus_6dB = 1;
     neg_minus_6dB = 0;
-    $display( "Interpolator simulation started" );
     #100 // 0.1us
+    $display( "Interpolator simulation started" );
     wait ( clk ) @( negedge clk );
     $display( "Sine generator enabled" );
     rst_n = 1;
@@ -606,4 +608,4 @@ initial begin // Generate VCD file for GTKwave
 `endif
 end
 
-endmodule
+endmodule // interpolator_tb

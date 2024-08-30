@@ -176,7 +176,9 @@
 `timescale 1ns / 1ps
 `default_nettype none
 
+/*============================================================================*/
 module interpolator #(
+/*============================================================================*/
     parameter POLYNOMIAL     = "3RD_ORDER", // "LINEAR", "2ND_ORDER" "4TH_ORDER", "5TH_ORDER"
     parameter INPUT_WIDTH    = 24, // Input width
     parameter FRACTION_WIDTH = 32, // >= INPUT_WIDTH + 1
