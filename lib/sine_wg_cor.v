@@ -122,7 +122,12 @@ initial begin : param_check
     end
     // Precision should be less (-3) than angle fraction!
     if ( PRECISION > ( RADIAN_WIDTH - 3 )) begin
-        $display( "PRECISION > ( RADIAN_WIDTH - 2 )!" );
+        $display( "PRECISION > ( RADIAN_WIDTH - 3 )!" );
+        $finish;
+    end
+    // Precision should be greater than 5!
+    if ( PRECISION < 6 ) begin
+        $display( "PRECISION < 6!" );
         $finish;
     end
 end // param_check
@@ -239,6 +244,7 @@ always @(posedge clk) begin : sine_wave_generator
         if ( ^quadrant ) begin // 2nd and 3rd quadrant
             m_cosine_d_i <= -x;
         end
+        m_sine_ch_i <= sine_ch_i;
         s_sine_dr_i <= 1;
         m_sine_dv_i <= 1;
     end
@@ -279,25 +285,32 @@ initial begin : init_cordic_table // Generate table with e.g. Octave
     tangle_table[3]  = ( FACTOR_1 * 0.124354994546761438156679 ) + 0.5;
     tangle_table[4]  = ( FACTOR_1 * 0.062418809995957350023055 ) + 0.5;
     tangle_table[5]  = ( FACTOR_1 * 0.031239833430268277442154 ) + 0.5;
-    tangle_table[6]  = ( FACTOR_1 * 0.015623728620476831294162 ) + 0.5;
-    tangle_table[7]  = ( FACTOR_1 * 0.007812341060101111143987 ) + 0.5;
-    tangle_table[8]  = ( FACTOR_1 * 0.003906230131966971757390 ) + 0.5;
-    tangle_table[9]  = ( FACTOR_1 * 0.001953122516478818758434 ) + 0.5;
-    tangle_table[10] = ( FACTOR_1 * 0.000976562189559319459436 ) + 0.5;
-    tangle_table[11] = ( FACTOR_1 * 0.000488281211194898289926 ) + 0.5;
-    tangle_table[12] = ( FACTOR_1 * 0.000244140620149361771245 ) + 0.5;
-    tangle_table[13] = ( FACTOR_1 * 0.000122070311893670207853 ) + 0.5;
-    tangle_table[14] = ( FACTOR_1 * 0.000061035156174208772594 ) + 0.5;
-    tangle_table[15] = ( FACTOR_1 * 0.000030517578115526095727 ) + 0.5;
-    tangle_table[16] = ( FACTOR_1 * 0.000015258789061315761542 ) + 0.5;
-    tangle_table[17] = ( FACTOR_1 * 0.000007629394531101969981 ) + 0.5;
-    tangle_table[18] = ( FACTOR_1 * 0.000003814697265606496142 ) + 0.5;
-    tangle_table[19] = ( FACTOR_1 * 0.000001907348632810186965 ) + 0.5;
-    tangle_table[20] = ( FACTOR_1 * 0.000000953674316405960844 ) + 0.5;
-    tangle_table[21] = ( FACTOR_1 * 0.000000476837158203088842 ) + 0.5;
-    tangle_table[22] = ( FACTOR_1 * 0.000000238418579101557974 ) + 0.5;
-    tangle_table[23] = ( FACTOR_1 * 0.000000119209289550780681 ) + 0.5;
-    tangle_table[24] = ( FACTOR_1 * 0.000000059604644775390552 ) + 0.5;
+    if ( 6  < PRECISION ) tangle_table[6]  = ( FACTOR_1 * 0.015623728620476831294162 ) + 0.5;
+    if ( 7  < PRECISION ) tangle_table[7]  = ( FACTOR_1 * 0.007812341060101111143987 ) + 0.5;
+    if ( 8  < PRECISION ) tangle_table[8]  = ( FACTOR_1 * 0.003906230131966971757390 ) + 0.5;
+    if ( 9  < PRECISION ) tangle_table[9]  = ( FACTOR_1 * 0.001953122516478818758434 ) + 0.5;
+    if ( 10 < PRECISION ) tangle_table[10] = ( FACTOR_1 * 0.000976562189559319459436 ) + 0.5;
+    if ( 11 < PRECISION ) tangle_table[11] = ( FACTOR_1 * 0.000488281211194898289926 ) + 0.5;
+    if ( 12 < PRECISION ) tangle_table[12] = ( FACTOR_1 * 0.000244140620149361771245 ) + 0.5;
+    if ( 13 < PRECISION ) tangle_table[13] = ( FACTOR_1 * 0.000122070311893670207853 ) + 0.5;
+    if ( 14 < PRECISION ) tangle_table[14] = ( FACTOR_1 * 0.000061035156174208772594 ) + 0.5;
+    if ( 15 < PRECISION ) tangle_table[15] = ( FACTOR_1 * 0.000030517578115526095727 ) + 0.5;
+    if ( 16 < PRECISION ) tangle_table[16] = ( FACTOR_1 * 0.000015258789061315761542 ) + 0.5;
+    if ( 17 < PRECISION ) tangle_table[17] = ( FACTOR_1 * 0.000007629394531101969981 ) + 0.5;
+    if ( 18 < PRECISION ) tangle_table[18] = ( FACTOR_1 * 0.000003814697265606496142 ) + 0.5;
+    if ( 19 < PRECISION ) tangle_table[19] = ( FACTOR_1 * 0.000001907348632810186965 ) + 0.5;
+    if ( 20 < PRECISION ) tangle_table[20] = ( FACTOR_1 * 0.000000953674316405960844 ) + 0.5;
+    if ( 21 < PRECISION ) tangle_table[21] = ( FACTOR_1 * 0.000000476837158203088842 ) + 0.5;
+    if ( 22 < PRECISION ) tangle_table[22] = ( FACTOR_1 * 0.000000238418579101557974 ) + 0.5;
+    if ( 23 < PRECISION ) tangle_table[23] = ( FACTOR_1 * 0.000000119209289550780681 ) + 0.5;
+    if ( 24 < PRECISION ) tangle_table[24] = ( FACTOR_1 * 0.000000059604644775390552 ) + 0.5;
+    if ( 25 < PRECISION ) tangle_table[25] = ( FACTOR_1 * 0.000000029802322387695303 ) + 0.5;
+    if ( 26 < PRECISION ) tangle_table[26] = ( FACTOR_1 * 0.000000014901161193847655 ) + 0.5;
+    if ( 27 < PRECISION ) tangle_table[27] = ( FACTOR_1 * 0.000000007450580596923828 ) + 0.5;
+    if ( 28 < PRECISION ) tangle_table[28] = ( FACTOR_1 * 0.000000003725290298461914 ) + 0.5;
+    if ( 29 < PRECISION ) tangle_table[29] = ( FACTOR_1 * 0.000000001862645149230957 ) + 0.5;
+    if ( 30 < PRECISION ) tangle_table[30] = ( FACTOR_1 * 0.000000000931322574615479 ) + 0.5;
+    if ( 31 < PRECISION ) tangle_table[31] = ( FACTOR_1 * 0.000000000465661287307739 ) + 0.5;
 
     if ( 1'bx === tangle_table[PRECISION-1][0] ) begin
         $display( "ATAN tangle_table[%0d] is unknown!", ( PRECISION - 1 ));
@@ -337,6 +350,13 @@ initial begin : init_cordic_table // Generate table with e.g. Octave
     k_table[22] = ( FACTOR_1 * 0.607252935008887217982476 ) + 0.5;
     k_table[23] = ( FACTOR_1 * 0.607252935008882888112680 ) + 0.5;
     k_table[24] = ( FACTOR_1 * 0.607252935008881777889655 ) + 0.5;
+    k_table[25] = ( FACTOR_1 * 0.607252935008881555845051 ) + 0.5;
+    k_table[26] = ( FACTOR_1 * 0.607252935008881444822748 ) + 0.5;
+    k_table[27] = ( FACTOR_1 * 0.607252935008881444822748 ) + 0.5;
+    k_table[28] = ( FACTOR_1 * 0.607252935008881444822748 ) + 0.5;
+    k_table[29] = ( FACTOR_1 * 0.607252935008881444822748 ) + 0.5;
+    k_table[30] = ( FACTOR_1 * 0.607252935008881444822748 ) + 0.5;
+    k_table[31] = ( FACTOR_1 * 0.607252935008881444822748 ) + 0.5;
 */
 end // init_cordic_table
 

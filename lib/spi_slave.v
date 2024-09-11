@@ -44,7 +44,8 @@ module spi_slave #(
         input  wire s_spi_dv, // Data valid
         output wire [SPI_DATA_WIDTH-1:0] m_spi_d, // Data from master
         output wire m_spi_dv, // Data valid
-        output wire spi_active);
+        output wire spi_active
+    );
 
 localparam MAX_CLOG2_WIDTH = 8;
 /*============================================================================*/
