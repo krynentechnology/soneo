@@ -158,7 +158,7 @@ i2s_tdm_enc i2s_tdm_enc_2(
     .i2s_tdm_ch(s_sine_ch_2),
     .i2s_tdm_chv(s_sine_dv_2),
     .i2s_tdm_chr(s_sine_dr_2),
-    .i2s_tdm_d({m_sine_d_2, 8'h00}),
+    .i2s_tdm_d({m_sine_d_2, 8'h01}), // Set bit 0 for LSB verification
     .i2s_tdm_dv(m_sine_dv_2),
     .i2s_tdm_dr(m_sine_dr_2));
 
@@ -244,7 +244,7 @@ i2s_tdm_enc i2s_tdm_enc_3(
     .i2s_tdm_ch(s_sine_ch_3),
     .i2s_tdm_chv(s_sine_dv_3),
     .i2s_tdm_chr(s_sine_dr_3),
-    .i2s_tdm_d({m_sine_d_3, 8'h00}),
+    .i2s_tdm_d({m_sine_d_3, 8'h01}), // Set bit 0 for LSB verification
     .i2s_tdm_dv(m_sine_dv_3),
     .i2s_tdm_dr(m_sine_dr_3));
 
@@ -296,6 +296,7 @@ assign bclk_1 = clk_counter[4]; // 1.536MHz, clk divide by 32
 assign lrclk = clk_counter[9]; // 48kHz, clk divide by 1024
 assign frame = ~lrclk;
 
+// Sine values from sine wave generator, input for I2S/TDM encoder
 reg signed [INPUT_WIDTH_1-1:0] sine_1_1 = 0;
 reg signed [INPUT_WIDTH_1-1:0] sine_1_2 = 0;
 reg signed [INPUT_WIDTH_2-1:0] sine_2_1 = 0;
@@ -318,7 +319,7 @@ reg signed [INPUT_WIDTH_2-1:0] sine_3_13 = 0;
 reg signed [INPUT_WIDTH_2-1:0] sine_3_14 = 0;
 reg signed [INPUT_WIDTH_2-1:0] sine_3_15 = 0;
 reg signed [INPUT_WIDTH_2-1:0] sine_3_16 = 0;
-
+// Decoded sine values from I2S/TDM decoder, should match the sine input values!
 reg signed [INPUT_WIDTH_1-1:0] dec_i2s_1_1 = 0;
 reg signed [INPUT_WIDTH_1-1:0] dec_i2s_1_2 = 0;
 reg signed [INPUT_WIDTH_2-1:0] dec_i2s_2_1 = 0;
@@ -474,7 +475,7 @@ end
 endmodule // i2s_tdm_tb
 
 /*============================================================================*/
-module sine_wg #(
+module sine_wg #( // Simulation multi channel sine wave generator
 /*============================================================================*/
     parameter NR_CHANNELS = 2,
     parameter FRACTION_1_0_WIDTH = 21,

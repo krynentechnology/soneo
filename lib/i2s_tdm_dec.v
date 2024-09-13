@@ -79,7 +79,7 @@ input  wire i2s_tdm_dr;
 initial begin : parameter_check
 /*============================================================================*/
     if ( NR_CHANNELS < 2 ) begin
-        $display( "NR_CHANNELS (%d) error", NR_CHANNELS );
+        $display( "NR_CHANNELS (%d) < 2!", NR_CHANNELS );
         $finish;
     end
     if ( OUTPUT_WIDTH < 8 ) begin
@@ -94,15 +94,15 @@ end // parameter_check
 localparam [0:0] RIGHT_ALIGNED = 1 - LEFT_ALIGNED;
 localparam BIT_COUNTER_WIDTH = clog2( OUTPUT_WIDTH + RIGHT_ALIGNED + 1 );
 
-// If mclk is twice the frequency as the bclk, the bclk level alternates for
-// every mclk and actions should be done for the previous determined level.
+// The bclk level alternates for every mclk when mclk is twice the frequency as
+// the bclk and actions should be done for the previous determined level.
 localparam [0:0] MCLK_BCLK_RATIO_TWO = ( MCLK_BCLK_RATIO == 2 );
 
 // Delayed clocks
 reg lrclk_i = LRCLK_POLARITY;
 reg bclk_i = 0;
 
-// AXIS signals
+// I/O bus signals
 reg [OUTPUT_WIDTH-1:0] i2s_tdm_d_i = 0;
 reg [CHANNEL_WIDTH-1:0] i2s_tdm_ch_i = 0;
 reg i2s_tdm_dv_i = 0;
@@ -113,7 +113,7 @@ reg active = 0;
 reg [BIT_COUNTER_WIDTH-1:0] bit_counter = 0;
 reg [OUTPUT_WIDTH-1:0] data_in = 0;
 
-// Process to decode serial TDMx or I2S line
+// Process to decode serial I2S or TDM line
 /*============================================================================*/
 always @(posedge mclk) begin : decode_i2s_tdm
 /*============================================================================*/
