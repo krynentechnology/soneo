@@ -279,12 +279,12 @@ initial begin : init_cordic_table // Generate table with e.g. Octave
 // fid=fopen('cor_tangle_table.txt', 'w+')
 // for n=0:24 fprintf( fid, '    tangle_table[%d] = ( FACTOR_1 * %.24f ) + 0.5;\n', n, atan( 1 / power( 2, n ))) endfor
 // fclose(fid)
-    tangle_table[0]  = ( FACTOR_1 * 0.785398163397448278999491 ) + 0.5;
-    tangle_table[1]  = ( FACTOR_1 * 0.463647609000806093515479 ) + 0.5;
-    tangle_table[2]  = ( FACTOR_1 * 0.244978663126864143473327 ) + 0.5;
-    tangle_table[3]  = ( FACTOR_1 * 0.124354994546761438156679 ) + 0.5;
-    tangle_table[4]  = ( FACTOR_1 * 0.062418809995957350023055 ) + 0.5;
-    tangle_table[5]  = ( FACTOR_1 * 0.031239833430268277442154 ) + 0.5;
+    tangle_table[0] = ( FACTOR_1 * 0.785398163397448278999491 ) + 0.5;
+    tangle_table[1] = ( FACTOR_1 * 0.463647609000806093515479 ) + 0.5;
+    tangle_table[2] = ( FACTOR_1 * 0.244978663126864143473327 ) + 0.5;
+    tangle_table[3] = ( FACTOR_1 * 0.124354994546761438156679 ) + 0.5;
+    tangle_table[4] = ( FACTOR_1 * 0.062418809995957350023055 ) + 0.5;
+    tangle_table[5] = ( FACTOR_1 * 0.031239833430268277442154 ) + 0.5;
     if ( 6  < PRECISION ) tangle_table[6]  = ( FACTOR_1 * 0.015623728620476831294162 ) + 0.5;
     if ( 7  < PRECISION ) tangle_table[7]  = ( FACTOR_1 * 0.007812341060101111143987 ) + 0.5;
     if ( 8  < PRECISION ) tangle_table[8]  = ( FACTOR_1 * 0.003906230131966971757390 ) + 0.5;
