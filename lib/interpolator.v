@@ -168,8 +168,9 @@
  *
  *  The linear and quadratic interpolation could be used for wave generation of
  *  shapes like triangle, ramp up/down sawtooth, square (with variable duty
- *  cycle - pulse), circular/parabolic shapes and spikes etc. The output could
- *  also be used for amplitude (volume) control e.g. fade in/out.
+ *  cycle - pulse), circular/parabolic shapes and spikes etc. The interpolated
+ *  output could also be used for amplitude (volume) control e.g. fade in/out,
+ *  ATTENUATION = 1.
  **/
 
 `resetall
@@ -179,10 +180,11 @@
 /*============================================================================*/
 module interpolator #(
 /*============================================================================*/
-    parameter POLYNOMIAL     = "3RD_ORDER", // "LINEAR", "2ND_ORDER" "4TH_ORDER", "5TH_ORDER"
-    parameter INPUT_WIDTH    = 24, // Input width
-    parameter FRACTION_WIDTH = 32, // >= INPUT_WIDTH + 1
-    parameter NR_CHANNELS    = 2 ) // Number of interpolation channels
+    parameter POLYNOMIAL        = "3RD_ORDER", // "LINEAR", "2ND_ORDER" "4TH_ORDER", "5TH_ORDER"
+    parameter INPUT_WIDTH       = 24, // Input width
+    parameter FRACTION_WIDTH    = 32, // >= INPUT_WIDTH + 1
+    parameter NR_CHANNELS       = 2,  // Number of interpolation channels
+    parameter [0:0] ATTENUATION = 0 ) // 1 = Enable signal attenuation
     (
     clk, rst_n, // Synchronous reset, high when clk is stable!
     s_intrp_d, s_intrp_ch, s_intrp_dv, s_intrp_dr, // _d = data, _ch = channel id
@@ -190,7 +192,9 @@ module interpolator #(
     select, // 2'b01 = just store data (when fraction = 0), skip interpolation!
             // 2'b10 = "head" quadratic interpolation
             // 2'b11 = store and output p0 value before start interpolation
+    s_signal_d, // Signal to be attenuated       
     m_intrp_d, m_intrp_ch, m_intrp_dv, m_intrp_dr, // _dv = data valid, _dr = data ready
+    m_signal_d, // Attenuated signal
     overflow
     );
 
@@ -230,10 +234,12 @@ input  wire             s_intrp_dv;
 output wire             s_intrp_dr;
 input  wire [CNTRW-1:0] fraction; // 1.CNTRW-1 fraction value
 input  wire [1:0]       select;
+input  wire [CNTRW-1:0] s_signal_d;
 output wire [OUTW-1:0]  m_intrp_d;
 output wire [CHW-1:0]   m_intrp_ch;
 output wire             m_intrp_dv;
 input  wire             m_intrp_dr;
+output wire [CNTRW-1:0] m_signal_d; // Valid one clock cycle after m_intrp_dv!
 output wire             overflow;
 /**
  * The 1.CNTRW-1 fraction (step) value represents a maximum of 2. E.g. an input
@@ -457,7 +463,7 @@ reg signed [PW-1:0] product_c;
 always @(*) begin : multiplication_and_calc_coeff
 /*============================================================================*/
     product_c = ( p_arg_1 * p_arg_2 ) + // Round to zero (for negative values)!
-        $signed( {{( ASW + 1 ){1'b0}}, {( CNTRW - 1 ){p_arg_2[ASW-1]}}} );
+        $signed( {{( ASW + 1 ){1'b0}}, {( CNTRW - 1 ){p_arg_1[CNTRW-1] ^ p_arg_2[ASW-1]}}} );
     if ( POLYNOMIAL == "2ND_ORDER" ) begin // Conditional synthesis!
         if ( head ) begin // "head" interpolation
             // 2a = p0 - 2n1 + n2
@@ -521,6 +527,8 @@ reg axx_plus_bx = 0;
 reg cxx_plus_dx = 0;
 reg axxx_plus_bxx = 0;
 reg axxxx_plus_bxxx = 0;
+reg attn = 0;
+
 reg signed [ASW-1:0] ax_plus_b_r = 0;
 reg signed [ASW-1:0] cx_plus_d_r = 0;
 reg signed [ASW-1:0] cxx_plus_dx_plus_e_r = 0;
@@ -553,6 +561,7 @@ assign overflow_cx_plus_d_r =
     ( cx_plus_d_r[ASW-1] && !( &cx_plus_d_r[ASW-2:INW-1] ));
 
 reg signed [OUTW-1:0] m_intrp_d_i = 0;
+reg signed [CNTRW-1:0] m_signal_d_i = 0;
 /*============================================================================*/
 always @(posedge clk) begin : calc_y
 /*============================================================================*/
@@ -701,6 +710,7 @@ always @(posedge clk) begin : calc_y
         end
         yx <= axxxx_bxxx_cxx_dx_e;
     end
+    attn <= yx;
     if ( yx ) begin
         m_intrp_d_i[OUTW-1] <= yx_i[ASW-1]; // Assign sign
         m_intrp_d_i[OUTW-2:0] <= yx_i[INW-2:0];
@@ -712,6 +722,22 @@ always @(posedge clk) begin : calc_y
             m_intrp_d_i[OUTW-2:0] <= ALL_ZERO;
         end
         m_intrp_dv_i <= 1;
+        if ( ATTENUATION ) begin // Conditional synthesis!
+            p_arg_1 <= s_signal_d;
+            p_arg_2 <= yx_i;
+        end
+    end
+    if ( attn && ATTENUATION ) begin // Conditional synthesis!
+        m_signal_d_i[CNTRW-1] <= product_c[PW-2];
+        m_signal_d_i[CNTRW-2:0] <= product_c[( CNTRW + INW )-3:INW-1];
+        // Check for positive overflow!
+        if ( !product_c[PW-2] && |product_c[PW-3:( CNTRW + INW )-2] ) begin
+            m_signal_d_i[CNTRW-2:0] <= {( CNTRW - 1 ){1'b1}};
+        end
+        // Check for negative overflow!
+        if ( product_c[PW-2] && !( &product_c[PW-3:( CNTRW + INW )-2] )) begin
+            m_signal_d_i[CNTRW-2:0] <= {( CNTRW - 1 ){1'b0}};
+        end
     end
     if ( !rst_n ) begin
         ax <= 0;
@@ -729,14 +755,18 @@ always @(posedge clk) begin : calc_y
         cx_plus_d_x_24 <= 0;
         cxx_plus_dx <= 0;
         yx <= 0;
+        attn <= 0;
         ax_plus_b_r <= 0;
         cx_plus_d_r <= 0;
         cxx_plus_dx_plus_e_r <= 0;
         m_intrp_d_i <= 0;
         m_intrp_dv_i <= 0;
+        m_signal_d_i <= 0;
     end
 end // calc_y
+
 assign m_intrp_d = m_intrp_d_i;
 assign m_intrp_dv = m_intrp_dv_i;
+assign m_signal_d = m_signal_d_i;
 
 endmodule
