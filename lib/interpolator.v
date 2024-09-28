@@ -769,4 +769,4 @@ assign m_intrp_d = m_intrp_d_i;
 assign m_intrp_dv = m_intrp_dv_i;
 assign m_signal_d = m_signal_d_i;
 
-endmodule
+endmodule // interpolator
