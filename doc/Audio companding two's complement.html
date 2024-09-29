@@ -19,6 +19,9 @@
 
 13 bits ~ 78 dB psychoacoustic masking -&gt; 20 bits ~ 120 dB dynamic range
 
+13-bits = "sabcdefghijkl", s = sign, l = step_lsb, [step_lsb-1:0] = don't care for encoder, = sign for decoder
+
+<i>s</i>                          <i>s     step</i>
 0 1 abcdefghijkl 000000 -&gt; 0 111 abcdefghijkl
 0 01 abcdefghijkl 00000 -&gt; 0 110 abcdefghijkl
 0 001 abcdefghijkl 0000 -&gt; 0 101 abcdefghijkl
@@ -37,7 +40,7 @@
 1 1111110  abcdefghijkl -&gt; 1 110 abcdefghijkl
 1 1111111  abcdefghijkl -&gt; 1 111 abcdefghijkl
 
-2-bits significant (including sign) 9-bits value companding to 5-bits value 
+2-bits significant (including sign) 9-bits value companding to 5-bits value
 
 0 1 a 000000 -&gt; 0 111 a   0 1 0 000000 -&gt; 0 111 0   128 -&gt;  14   0 1 1 000000 -&gt; 0 111 1   192 -&gt;  15
 0 01 a 00000 -&gt; 0 110 a   0 01 0 00000 -&gt; 0 110 0   64  -&gt;  12   0 01 1 00000 -&gt; 0 110 1   96  -&gt;  13
@@ -61,6 +64,9 @@
 
 12 bits ~ 72 dB psychoacoustic masking -&gt; 27 bits ~ 163 dB dynamic range
 
+12-bits = "sabcdefghijk", s = sign, k = step_lsb, [step_lsb-1:0] = don't care for encoder, = sign for decoder
+
+<i>s</i>                                 <i>s      step</i>
 0 1 abcdefghijk 00000000000000 -&gt; 0 1111 abcdefghijk
 0 01 abcdefghijk 0000000000000 -&gt; 0 1110 abcdefghijk
 0 001 abcdefghijk 000000000000 -&gt; 0 1011 abcdefghijk
@@ -95,7 +101,7 @@
 1 111111111111110  abcdefghijk -&gt; 1 1110 abcdefghijk
 1 111111111111111  abcdefghijk -&gt; 1 1111 abcdefghijk
 
-2-bits significant (including sign) 17-bits value companding to 6-bits value 
+2-bits significant (including sign) 17-bits value companding to 6-bits value
 
 0 1 a 00000000000000 -&gt; 0 1111 a   0 1 0 00000000000000 -&gt; 0 1111 0   32768 -&gt;  30   0 1 1 00000000000000 -&gt; 0 1111 1   49152 -&gt;  31
 0 01 a 0000000000000 -&gt; 0 1110 a   0 01 0 0000000000000 -&gt; 0 1110 0   16384 -&gt;  28   0 01 1 0000000000000 -&gt; 0 1110 1   24578 -&gt;  29
