@@ -4,7 +4,7 @@
 <ul>
   <li><a href="lib/aes_enc.v">AES-128</a>  (supports "DEFAULT", "FAST" and "TINY" configuration)</li>
   <li><a href="lib/apcm_sbc4_enc.v">APCM</a>  (Bluetooth A2DP 16-bits audio codec)</li>
-  <li><a href="lib/compander.v">Compander</a>  (20/27 bit compander to/from 16-bit two's complement)</li>
+  <li><a href="lib/compander.v">Compander</a>  (20/27-bit compander to/from 16-bit two's complement)</li>
   <li><a href="lib/equalizer.v">Equalizer</a>  (IIR filter biquad cascaded bands)</li>
   <li><a href="lib/i2s_tdm_enc.v">I2S/TDM</a>  (I2S/TDM encoder and decoder)</li>
   <li><a href="lib/interpolator.v">Interpolator</a>  (1st, 2nd, 3rd, 4th and 5th order polynomial)</li>
