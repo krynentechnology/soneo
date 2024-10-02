@@ -91,19 +91,19 @@ end
 always @(posedge clk) begin : noise_generator
 /*============================================================================*/
     if ( rndm_ready && ( rndm_ch < NR_CHANNELS )) begin
-            lfsr_i = lfsr_ch[rndm_ch];
-            lfsr[OUTPUT_WIDTH-1] = lfsr_i[0];
-            for ( i = OUTPUT_WIDTH - 1; i > 0; i = i - 1 ) begin
-                lfsr[i-1] = lfsr_i[i];
-                if ( LFSR_TAP[i] ) begin
-                    lfsr[i-1] = lfsr_i[i] ~^ lfsr_i[0]; // Galois LFSR
-                end
+        lfsr_i = lfsr_ch[rndm_ch];
+        lfsr[OUTPUT_WIDTH-1] = lfsr_i[0];
+        for ( i = OUTPUT_WIDTH - 1; i > 0; i = i - 1 ) begin
+            lfsr[i-1] = lfsr_i[i];
+            if ( LFSR_TAP[i] ) begin
+                lfsr[i-1] = lfsr_i[i] ~^ lfsr_i[0]; // Galois LFSR
             end
-            if ( &lfsr ) begin // Prevent lock-up state!
-                lfsr = 0;
-            end
-            lfsr_ch[rndm_ch] <= lfsr;
-            rndm_out <= lfsr;
+        end
+        if ( &lfsr ) begin // Prevent lock-up state!
+            lfsr = 0;
+        end
+        lfsr_ch[rndm_ch] <= lfsr;
+        rndm_out <= lfsr;
     end
     if ( !rst_n ) begin
         lfsr_ch[rndm_ch] <= rndm_seed;
