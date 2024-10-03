@@ -725,10 +725,9 @@ always @(posedge clk) begin : calc_y
         end
         m_intrp_dv_i <= 1;
         if ( ATTENUATION ) begin // Conditional synthesis!
+            p_arg_1 <= s_signal_d_i;
             if ( s_signal_dv ) begin
                 p_arg_1 <= $signed( s_signal_d );
-            end else begin
-                p_arg_1 <= s_signal_d_i;
             end
             p_arg_2 <= yx_i;
         end
