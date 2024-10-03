@@ -192,7 +192,7 @@ module interpolator #(
     select, // 2'b01 = just store data (when fraction = 0), skip interpolation!
             // 2'b10 = "head" quadratic interpolation
             // 2'b11 = store and output p0 value before start interpolation
-    s_signal_d, // Signal to be attenuated       
+    s_signal_d, s_signal_dv, // Signal to be attenuated + valid
     m_intrp_d, m_intrp_ch, m_intrp_dv, m_intrp_dr, // _dv = data valid, _dr = data ready
     m_signal_d, // Attenuated signal
     overflow
@@ -235,6 +235,7 @@ output wire             s_intrp_dr;
 input  wire [CNTRW-1:0] fraction; // 1.CNTRW-1 fraction value
 input  wire [1:0]       select;
 input  wire [CNTRW-1:0] s_signal_d;
+input  wire             s_signal_dv; // Signal to attenuate valid
 output wire [OUTW-1:0]  m_intrp_d;
 output wire [CHW-1:0]   m_intrp_ch;
 output wire             m_intrp_dv;
@@ -561,6 +562,7 @@ assign overflow_cx_plus_d_r =
     ( cx_plus_d_r[ASW-1] && !( &cx_plus_d_r[ASW-2:INW-1] ));
 
 reg signed [OUTW-1:0] m_intrp_d_i = 0;
+reg signed [CNTRW-1:0] s_signal_d_i = 0;
 reg signed [CNTRW-1:0] m_signal_d_i = 0;
 /*============================================================================*/
 always @(posedge clk) begin : calc_y
@@ -723,8 +725,17 @@ always @(posedge clk) begin : calc_y
         end
         m_intrp_dv_i <= 1;
         if ( ATTENUATION ) begin // Conditional synthesis!
-            p_arg_1 <= s_signal_d;
+            if ( s_signal_dv ) begin
+                p_arg_1 <= $signed( s_signal_d );
+            end else begin
+                p_arg_1 <= s_signal_d_i;
+            end
             p_arg_2 <= yx_i;
+        end
+    end
+    if ( ATTENUATION ) begin // Conditional synthesis!
+        if ( s_signal_dv ) begin
+            s_signal_d_i <= $signed( s_signal_d );
         end
     end
     if ( attn && ATTENUATION ) begin // Conditional synthesis!

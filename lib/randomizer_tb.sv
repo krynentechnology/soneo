@@ -41,11 +41,11 @@ wire [OUTPUT_WIDTH_1-1:0] rndm_1_out;
 
 randomizer rndm_1(
     .clk(clk),
-    .rst_n(rst_n),
     .rndm_ch(rndm_1_ch),
-    .rndm_ready(rndm_1_ready),
     .rndm_seed(rndm_1_seed),
-    .rndm_out(rndm_1_out)
+    .rndm_init(~rst_n),
+    .rndm_out(rndm_1_out),
+    .rndm_ready(rndm_1_ready)
     );
 
 defparam rndm_1.NR_CHANNELS = NR_CHANNELS_1;
@@ -56,17 +56,21 @@ localparam NR_CHANNELS_2_WIDTH = $clog2( NR_CHANNELS_2 );
 localparam OUTPUT_WIDTH_2 = 24;
 
 reg  [NR_CHANNELS_2_WIDTH-1:0] rndm_2_ch = 0;
+reg  [NR_CHANNELS_2_WIDTH-1:0] rndm_2_ch_i = 0;
 reg  rndm_2_ready = 0;
 reg  [OUTPUT_WIDTH_2-1:0] rndm_2_seed = 0;
 wire [OUTPUT_WIDTH_2-1:0] rndm_2_out;
+reg  [OUTPUT_WIDTH_1-1:0] rndm_2_out_1;
+reg  [OUTPUT_WIDTH_1-1:0] rndm_2_out_2;
+reg  [OUTPUT_WIDTH_1-1:0] rndm_2_out_3;
 
 randomizer rndm_2(
     .clk(clk),
-    .rst_n(rst_n),
     .rndm_ch(rndm_2_ch),
-    .rndm_ready(rndm_2_ready),
     .rndm_seed(rndm_2_seed),
-    .rndm_out(rndm_2_out)
+    .rndm_init(~rst_n),
+    .rndm_out(rndm_2_out),
+    .rndm_ready(rndm_2_ready)
     );
 
 defparam rndm_2.NR_CHANNELS = NR_CHANNELS_2;
@@ -87,6 +91,17 @@ always @(posedge clk) begin : alternate_channels
 end // alternate_channels
 
 /*============================================================================*/
+always @(posedge clk) begin : collect_data
+/*============================================================================*/
+    rndm_2_ch_i <= rndm_2_ch;
+    case ( rndm_2_ch_i ) // Channel random_out is valid one clock cycle later!
+        0 : rndm_2_out_1 <= rndm_2_out;
+        1 : rndm_2_out_2 <= rndm_2_out;
+        2 : rndm_2_out_3 <= rndm_2_out;
+    endcase
+end // collect_data
+
+/*============================================================================*/
 initial begin
 /*============================================================================*/
     rst_n = 0;
@@ -103,8 +118,8 @@ initial begin
     rndm_2_ch = 2;
     rndm_2_seed = 24'h000004;
     wait ( clk ) @( negedge clk )
-    rndm_2_ch = 0;
     #100
+    rndm_2_ch = 0;
     rst_n = 1;
     rndm_1_ready = 1;
     rndm_2_ready = 1;
@@ -112,7 +127,7 @@ initial begin
     #10000 // 10us
     rndm_1_ready = 0;
     rndm_2_ready = 0;
-    #100
+    #500
     rndm_1_ready = 1;
     rndm_2_ready = 1;
     #10000 // 10us

@@ -65,6 +65,7 @@ interpolator intrp1(
     .fraction(fraction1),
     .select(select1),
     .s_signal_d(s_signal1_d),
+    .s_signal_dv(1'b1),
     .m_intrp_d(m_intrp1_d),
     .m_intrp_dv(m_intrp1_dv),
     .m_intrp_dr(m_intrp1_dr),
@@ -328,13 +329,13 @@ begin
         setup_quadratic( FACTOR_6DB, 0, 1, 0 ); // n2 = FACTOR_6DB
          // p1 = 0, p0 = 0, n1 = FACTOR_6DB, n2 = FACTOR_6DB
         setup_quadratic( FACTOR_6DB, ( FRACTION_1_0 / 20.0 ), 0, 1 ); // Select "head"
-        setup_quadratic( 0, 0, 1, 0 ); // n2 = 0 
+        setup_quadratic( 0, 0, 1, 0 ); // n2 = 0
          // p1 = FACTOR_6DB, p0 = FACTOR_6DB, n1 = 0, n2 = 0,
         setup_quadratic( 0, 0, 0, 0 );
         setup_quadratic( -FACTOR_6DB, 0, 1, 0 ); // n2 = -FACTOR_6DB
          // p1 = FACTOR_6DB, p0 = 0, n1 = -FACTOR_6DB, n2 = -FACTOR_6DB
         setup_quadratic( -FACTOR_6DB, 0, 0, 1 ); // Select "head"
-        setup_quadratic( 0, 0, 1, 0 ); // n2 = 0 
+        setup_quadratic( 0, 0, 1, 0 ); // n2 = 0
          // p1 = -FACTOR_6DB, p0 = -FACTOR_6DB, n1 = 0, n2 = 0
         setup_quadratic( 0, 0, 0, 0 );
     end
@@ -345,23 +346,23 @@ begin
     // Circular spike
     for ( j = 0; j < 5; j = j + 1 ) begin
         setup_quadratic( FACTOR_6DB, 0, 1, 0 ); // n2 = FACTOR_6DB
-        setup_quadratic( 0, 0, 1, 0 ); // n2 = 0 
+        setup_quadratic( 0, 0, 1, 0 ); // n2 = 0
         setup_quadratic( FACTOR_6DB, 0, 1, 0 ); // n2 = FACTOR_6DB
          // p1 = FACTOR_6DB, p0 = 0, n1 = FACTOR_6DB, n2 = 0
         setup_quadratic( 0, ( FRACTION_1_0 / 20.0 ), 0, 0 );
          // p1 = 0, p0 = FACTOR_6DB, n1 = 0, n2 = FACTOR_6DB
         setup_quadratic( FACTOR_6DB, 0, 0, 1 ); // Select "head"
-        setup_quadratic( 0, 0, 1, 0 ); // n2 = 0 
+        setup_quadratic( 0, 0, 1, 0 ); // n2 = 0
         setup_quadratic( -FACTOR_6DB, 0, 1, 0 ); // n2 = -FACTOR_6DB
-        setup_quadratic( 0, 0, 1, 0 ); // n2 = 0 
+        setup_quadratic( 0, 0, 1, 0 ); // n2 = 0
         setup_quadratic( -FACTOR_6DB, 0, 1, 0 ); // n2 = -FACTOR_6DB
          // p1 = -FACTOR_6DB, p0 = 0, n1 = -FACTOR_6DB, n2 = 0
         setup_quadratic( 0, 0, 0, 0 );
         setup_quadratic( -FACTOR_6DB, 0, 1, 0 ); // n2 = -FACTOR_6DB
-        setup_quadratic( 0, 0, 1, 0 ); // n2 = 0 
+        setup_quadratic( 0, 0, 1, 0 ); // n2 = 0
          // p1 = 0, p0 = -FACTOR_6DB, n1 = 0, n2 = -FACTOR_6DB
         setup_quadratic( -FACTOR_6DB, 0, 0, 1 ); // Select "head"
-        setup_quadratic( 0, 0, 1, 0 ); // n2 = 0 
+        setup_quadratic( 0, 0, 1, 0 ); // n2 = 0
     end
     setup_quadratic( 0, 0, 1, 0 );
     setup_quadratic( 0, 0, 1, 0 );

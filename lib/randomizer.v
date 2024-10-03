@@ -32,11 +32,12 @@ module randomizer #(
     parameter NR_CHANNELS = 1,
     parameter OUTPUT_WIDTH = 32 )
     (
-    clk, rst_n, // Synchronous reset, high when clk is stable!
+    clk,
     rndm_ch, // Channel
-    rndm_ready, // Ready for random generation output
-    rndm_seed, // Initial random value
-    rndm_out
+    rndm_seed, // Initial random value (seed)
+    rndm_init, // Initial seed valid
+    rndm_out,
+    rndm_ready // Ready for random generated output
     );
 
 localparam MAX_CLOG2_WIDTH = 8;
@@ -60,11 +61,11 @@ endfunction // clog2
 localparam CHANNEL_WIDTH = clog2( NR_CHANNELS );
 
 input  wire clk;
-input  wire rst_n;
 input  wire [CHANNEL_WIDTH-1:0] rndm_ch;
-input  wire rndm_ready;
 input  wire [OUTPUT_WIDTH-1:0] rndm_seed;
+input  wire rndm_init;
 output reg  [OUTPUT_WIDTH-1:0] rndm_out;
+input  wire rndm_ready;
 
 localparam COUNTER_WIDTH = clog2( OUTPUT_WIDTH );
 
@@ -105,7 +106,7 @@ always @(posedge clk) begin : noise_generator
         lfsr_ch[rndm_ch] <= lfsr;
         rndm_out <= lfsr;
     end
-    if ( !rst_n ) begin
+    if ( rndm_init ) begin
         lfsr_ch[rndm_ch] <= rndm_seed;
     end
 end // noise_generator
