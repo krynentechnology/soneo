@@ -47,7 +47,7 @@ reg  [INW-1:0]   s_intrp1_d = 0;
 reg              s_intrp1_dv = 0;
 wire             s_intrp1_dr;
 reg  [CNTRW-1:0] fraction1 = 0; // 1.CNTRW-1 fraction value
-reg  [1:0]       select1 = 0;
+reg  [2:0]       select1 = 0;
 reg  [CNTRW-1:0] s_signal1_d = SIGNAL_6DB;
 wire [OUTW-1:0]  m_intrp1_d;
 wire             m_intrp1_dv;
@@ -82,7 +82,7 @@ reg  [INW-1:0]   s_intrp2_d = 0;
 reg              s_intrp2_dv = 0;
 wire             s_intrp2_dr;
 reg  [CNTRW-1:0] fraction2; // 1.CNTRW-1 fraction value
-reg  [1:0]       select2 = 0;
+reg  [2:0]       select2 = 0;
 wire [OUTW-1:0]  m_intrp2_d;
 wire             m_intrp2_dv;
 reg              m_intrp2_dr = 1;
@@ -214,7 +214,7 @@ always #5 clk = ~clk; // 100 MHz clock
 /*============================================================================*/
 task setup_linear( input [INPUT_WIDTH-1:0] data,
                    input [CNTRW-1:0] fraction,
-                   input [1:0] select );
+                   input [2:0] select );
 /*============================================================================*/
 begin
     wait( s_intrp1_dr )
@@ -280,6 +280,10 @@ begin
         setup_linear( 0, 0, intrp1.STORE ); // n1 = 0
         setup_linear( 0, ( FRACTION_1_0 / 20.0 ), 0 );
     end
+    wait( s_intrp1_dr );
+    // Exponential
+    setup_linear( 0, 0, intrp1.STORE ); // Set PO = 0
+    setup_linear( 1000, ( FRACTION_1_0 * 1.01 ), intrp1.EXPONENTIAL ); // Set N1 start value
     wait( s_intrp1_dr );
 end
 endtask // setup_linear_shapes

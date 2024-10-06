@@ -189,18 +189,16 @@ module interpolator #(
     clk, rst_n, // Synchronous reset, high when clk is stable!
     s_intrp_d, s_intrp_ch, s_intrp_dv, s_intrp_dr, // _d = data, _ch = channel id
     fraction, // Fraction represents max. value 2.0 to allow down conversions
-    select, // 2'b01 = just store data (when fraction = 0), skip interpolation!
-            // 2'b10 = "head" quadratic interpolation
-            // 2'b11 = store and output p0 value before start interpolation
-    s_signal_d, s_signal_dv, // Signal to be attenuated + valid
+    select, // 3'b001 = just store data (when fraction = 0), skip interpolation!
+            // 3'b010 = "head" quadratic interpolation
+            // 3'b011 = store and output p0 value before start interpolation
+            // 3'b100 = use fraction as exponential attenuation (ATTENUATION=1,
+            //          POLYNOMIAL="LINEAR", POLYNOMIAL="2ND_ORDER" )
+    s_signal_d, s_signal_dv, // Signal to be attenuated when valid (_dv)
     m_intrp_d, m_intrp_ch, m_intrp_dv, m_intrp_dr, // _dv = data valid, _dr = data ready
     m_signal_d, // Attenuated signal
     overflow
     );
-
-parameter [1:0] STORE = 2'b01;
-parameter [1:0] HEAD = 2'b10;
-parameter [1:0] OUTPUT_P0 = 2'b11; // Store and output p0!
 
 localparam MAX_CLOG2_WIDTH = 8;
 /*============================================================================*/
@@ -220,6 +218,11 @@ function integer clog2( input [MAX_CLOG2_WIDTH-1:0] value );
     end
 endfunction
 
+localparam [2:0] STORE = 3'b001;
+localparam [2:0] HEAD = 3'b010;
+localparam [2:0] OUTPUT_P0 = 3'b011; // Store and output p0!
+localparam [2:0] EXPONENTIAL = 3'b100; // Exponential signal attenuation!
+
 localparam INW   = INPUT_WIDTH; // Input  width
 localparam OUTW  = INPUT_WIDTH; // Output width
 localparam CHW   = clog2( NR_CHANNELS ); // Channel width
@@ -233,7 +236,7 @@ input  wire [CHW-1:0]   s_intrp_ch;
 input  wire             s_intrp_dv;
 output wire             s_intrp_dr;
 input  wire [CNTRW-1:0] fraction; // 1.CNTRW-1 fraction value
-input  wire [1:0]       select;
+input  wire [2:0]       select;
 input  wire [CNTRW-1:0] s_signal_d;
 input  wire             s_signal_dv; // Signal to attenuate valid
 output wire [OUTW-1:0]  m_intrp_d;
@@ -285,17 +288,21 @@ wire signed [INW-1:0] n1_c;
 reg  signed [INW-1:0] n2 [0:CHN-1];
 wire signed [INW-1:0] n2_c;
 
-// Boolean states
+// Booleans
 reg s0 = 0;
 reg s0_i = 0;
 reg s0_ii = 0;
-reg yx = 0;
 reg next_x = 0;
 reg output_p0 = 0;
 reg head = 0;
 
+// Boolean state
+reg yx = 0;
+
 reg s_intrp_dr_i = 0;
 reg [CHW-1:0] m_intrp_ch_i = 0;
+reg signed [OUTW-1:0] m_intrp_d_i = 0;
+
 reg m_intrp_dv_i = 0;
 wire chs_intrp_dv; // Channel select valid
 assign chs_intrp_dv = s_intrp_dv && s_intrp_dr_i && ( s_intrp_ch < NR_CHANNELS );
@@ -321,6 +328,10 @@ assign p0_c = p0[ intrp_ch ];
 assign n1_c = n1[ intrp_ch ];
 assign n2_c = n2[ intrp_ch ];
 
+wire exponential;
+assign exponential = ATTENUATION && (( POLYNOMIAL == "LINEAR" ) ||
+    ( POLYNOMIAL == "2ND_ORDER" )) && !head && ( EXPONENTIAL == select );
+
 /*============================================================================*/
 always @(posedge clk) begin : fifo
 /*============================================================================*/
@@ -329,28 +340,34 @@ always @(posedge clk) begin : fifo
         s_intrp_dr_i <= 0;
         m_intrp_ch_i <= s_intrp_ch;
         if ( POLYNOMIAL == "LINEAR" ) begin // Conditional synthesis!
-            { p0[ s_intrp_ch ], n1[ s_intrp_ch ] } <= { n1_c, s_intrp_d };
+            { p0[ intrp_ch ], n1[ intrp_ch ] } <= { n1_c, s_intrp_d };
         end
         if (( POLYNOMIAL == "2ND_ORDER" ) ||
             ( POLYNOMIAL == "3RD_ORDER" ) ||
             ( POLYNOMIAL == "5TH_ORDER" )) begin // Conditional synthesis!
-            { p1[ s_intrp_ch ],
-              p0[ s_intrp_ch ],
-              n1[ s_intrp_ch ],
-              n2[ s_intrp_ch ] } <= { p0_c, n1_c, n2_c, s_intrp_d };
+            { p1[ intrp_ch ],
+              p0[ intrp_ch ],
+              n1[ intrp_ch ],
+              n2[ intrp_ch ] } <= { p0_c, n1_c, n2_c, s_intrp_d };
         end
         if ( POLYNOMIAL == "4TH_ORDER" ) begin // Conditional synthesis!
-            { p2[ s_intrp_ch ],
-              p1[ s_intrp_ch ],
-              p0[ s_intrp_ch ],
-              n1[ s_intrp_ch ],
-              n2[ s_intrp_ch ] } <= { p1_c, p0_c, n1_c, n2_c, s_intrp_d };
+            { p2[ intrp_ch ],
+              p1[ intrp_ch ],
+              p0[ intrp_ch ],
+              n1[ intrp_ch ],
+              n2[ intrp_ch ] } <= { p1_c, p0_c, n1_c, n2_c, s_intrp_d };
         end
+    end
+    if ( exponential && m_intrp_dv_i ) begin // Conditional synthesis!
+        p1[ intrp_ch ] <= -m_intrp_d_i; // y(x) = ax + b => b = 0
+        p0[ intrp_ch ] <= 0; // y(x) = x(ax + b) + c => b = 0, c = 0
+        n1[ intrp_ch ] <= m_intrp_d_i; // 2nd order only for "tail"
     end
     if ( !rst_n ) begin
         s_intrp_dr_i <= 1;
     end
 end // fifo
+
 assign s_intrp_dr = s_intrp_dr_i;
 assign m_intrp_ch = m_intrp_ch_i;
 
@@ -360,6 +377,8 @@ wire [CNTRW:0] acc_fraction_c;
 assign acc_fraction_c = acc_fraction + { 1'b0, step };
 wire next_x_c;
 assign next_x_c = |acc_fraction_c[CNTRW:CNTRW-1];
+wire signed [ASW-1:0] yx_i;
+
 /*============================================================================*/
 always @(posedge clk) begin : accumulate_fraction
 /*============================================================================*/
@@ -373,9 +392,14 @@ always @(posedge clk) begin : accumulate_fraction
         if ( fraction != 0 ) begin // Ignore fraction when zero!
             step <= fraction;
             acc_fraction <= { 2'b00, fraction[CNTRW-2:0] };
-            next_x <= fraction[CNTRW-1];
-            // No need to start when fraction >= 1, but fraction is stored for next iteration!
-            s0 <= ~fraction[CNTRW-1];
+            if ( exponential ) begin // Conditional synthesis!
+                step <= 0;
+                acc_fraction <= { 1'b0, fraction };
+            end else begin
+                next_x <= fraction[CNTRW-1];
+                // No need to start when fraction >= 1, but fraction is stored for next iteration!
+                s0 <= ~fraction[CNTRW-1];
+            end
         end
         else if (( STORE == select ) || ( 0 == step )) begin
             s0 <= 0; // Fraction step has no value yet!
@@ -389,12 +413,19 @@ always @(posedge clk) begin : accumulate_fraction
         end
     end
     if ( yx ) begin
-        acc_fraction <= acc_fraction_c;
-        // Skip y(x) calculation when acc_fraction >= 1
-        s0_i <= ~next_x_c;
-        next_x <= next_x_c;
-        if ( next_x_c ) begin
-            acc_fraction[CNTRW:CNTRW-1] <= 0;
+        if ( m_intrp_dr ) begin
+            acc_fraction <= acc_fraction_c;
+            if ( exponential ) begin
+                s0_i <= 1;
+                next_x <= overflow || ( 0 == yx_i );
+            end else begin
+                // Skip y(x) calculation when acc_fraction >= 1
+                s0_i <= ~next_x_c;
+                next_x <= next_x_c;
+                if ( next_x_c ) begin
+                    acc_fraction[CNTRW:CNTRW-1] <= 0;
+                end
+            end
         end
     end
     if ( !rst_n ) begin
@@ -455,16 +486,17 @@ assign p1_minus_n2__x_2 = -( n2_minus_p1 << 1 );
 assign p1_minus_n2__x_3 = p1_minus_n2__x_2 -  n2_minus_p1;
 assign n2_minus_p1__x_5 = ( n2_minus_p1 << 2 ) + n2_minus_p1;
 
-localparam PW = CNTRW + ASW;
+localparam PW = ( CNTRW + 1 ) + ASW;
 
-reg signed [CNTRW-1:0] p_arg_1; // x0_1 or division fraction (sign=0)
+reg signed [CNTRW:0] p_arg_1; // x0_1 or signal
 reg signed [ASW-1:0] p_arg_2;
 reg signed [PW-1:0] product_c;
+
 /*============================================================================*/
 always @(*) begin : multiplication_and_calc_coeff
 /*============================================================================*/
     product_c = ( p_arg_1 * p_arg_2 ) + // Round to zero (for negative values)!
-        $signed( {{( ASW + 1 ){1'b0}}, {( CNTRW - 1 ){p_arg_1[CNTRW-1] ^ p_arg_2[ASW-1]}}} );
+        $signed( {{( ASW + 2 ){1'b0}}, {( CNTRW - 1 ){p_arg_1[CNTRW-1] ^ p_arg_2[ASW-1]}}} );
     if ( POLYNOMIAL == "2ND_ORDER" ) begin // Conditional synthesis!
         if ( head ) begin // "head" interpolation
             // 2a = p0 - 2n1 + n2
@@ -537,12 +569,12 @@ reg signed [ASW-1:0] cxx_plus_dx_plus_e_r = 0;
 localparam [INW-2:0] ALL_ZERO = 0; // 00000...
 localparam [INW-2:0] ALL_ONES = -1; // 11111...
 
-wire signed [CNTRW-1:0] x0_1;
-assign x0_1 = { 1'b0, acc_fraction[CNTRW-2:0] };
+wire signed [CNTRW:0] x0_1;
+assign x0_1 = acc_fraction;
 
-wire signed [ASW-1:0] yx_i;
-assign yx_i = product_c[PW-2:CNTRW-1] +
-    (( POLYNOMIAL == "3RD_ORDER" ) ? cx_plus_d_r :
+wire signed [ASW-1:0] product_c_asw;
+assign product_c_asw = {product_c[PW-1], product_c[PW-4:CNTRW-1]};
+assign yx_i = product_c_asw + (( POLYNOMIAL == "3RD_ORDER" ) ? cx_plus_d_r :
         (( POLYNOMIAL == "4TH_ORDER" ) ? cxx_plus_dx_plus_e_r :
             b1st_c2nd_d3rd_e4th_f5th )); // LINEAR, 2ND_ORDER, 5TH_ORDER
 wire overflow_xy_i_p; // Positive values
@@ -561,9 +593,9 @@ assign overflow_cx_plus_d_r =
     ( !cx_plus_d_r[ASW-1] && |cx_plus_d_r[ASW-2:INW-1] ) |
     ( cx_plus_d_r[ASW-1] && !( &cx_plus_d_r[ASW-2:INW-1] ));
 
-reg signed [OUTW-1:0] m_intrp_d_i = 0;
 reg signed [CNTRW-1:0] s_signal_d_i = 0;
 reg signed [CNTRW-1:0] m_signal_d_i = 0;
+
 /*============================================================================*/
 always @(posedge clk) begin : calc_y
 /*============================================================================*/
@@ -597,7 +629,7 @@ always @(posedge clk) begin : calc_y
         ax_plus_b <= ax;
         if ( ax_plus_b ) begin
             p_arg_1 <= x0_1;
-            p_arg_2 <= product_c[PW-2:CNTRW-1] + b;
+            p_arg_2 <= product_c_asw + b;
         end
         yx <= ax_plus_b;
     end
@@ -611,29 +643,29 @@ always @(posedge clk) begin : calc_y
         ax <= ax_x_6;
         if ( ax ) begin
             p_arg_1 <= ONE_SIXTH;
-            p_arg_2 <= product_c[PW-2:CNTRW-1];
+            p_arg_2 <= product_c_asw;
         end
         ax_plus_b <= ax;
         if ( ax_plus_b ) begin
             p_arg_1 <= x0_1;
             p_arg_2 <= c_x_6;
-            ax_plus_b_r <= product_c[PW-2:CNTRW-1] + b;
+            ax_plus_b_r <= product_c_asw + b;
         end
         cx <= ax_plus_b;
         if ( cx ) begin
             p_arg_1 <= ONE_SIXTH;
-            p_arg_2 <= product_c[PW-2:CNTRW-1];
+            p_arg_2 <= product_c_asw;
         end
         axx_plus_bx <= cx;
         if ( axx_plus_bx ) begin
             p_arg_1 <= x0_1;
             p_arg_2 <= ax_plus_b_r;
-            cx_plus_d_r <= product_c[PW-2:CNTRW-1] + b1st_c2nd_d3rd_e4th_f5th;
+            cx_plus_d_r <= product_c_asw + b1st_c2nd_d3rd_e4th_f5th;
         end
         axxx_plus_bxx <= axx_plus_bx;
         if ( axxx_plus_bxx ) begin
             // p_arg_1 <= x0_1;
-            p_arg_2 <= product_c[PW-2:CNTRW-1];
+            p_arg_2 <= product_c_asw;
         end
         yx <= axxx_plus_bxx;
     end
@@ -647,39 +679,39 @@ always @(posedge clk) begin : calc_y
         ax_plus_b_x_24 <= ax_x_24;
         if ( ax_plus_b_x_24 ) begin
             p_arg_1 <= ONE_TWENTY_FOURTH;
-            p_arg_2 <= product_c[PW-2:CNTRW-1] + ( b_x_12 << 1 );
+            p_arg_2 <= product_c_asw + ( b_x_12 << 1 );
         end
         ax_plus_b <= ax_plus_b_x_24;
         if ( ax_plus_b ) begin
             p_arg_1 <= x0_1;
             p_arg_2 <= c_x_24;
-            ax_plus_b_r <= product_c[PW-2:CNTRW-1];
+            ax_plus_b_r <= product_c_asw;
         end
         cx_plus_d_x_24 <= ax_plus_b;
         if ( cx_plus_d_x_24 ) begin
             p_arg_1 <= ONE_TWENTY_FOURTH;
-            p_arg_2 <= product_c[PW-2:CNTRW-1] + ( d_x_12 << 1 );
+            p_arg_2 <= product_c_asw + ( d_x_12 << 1 );
         end
         cxx_plus_dx <= cx_plus_d_x_24;
         if ( cxx_plus_dx ) begin
             p_arg_1 <= x0_1;
-            p_arg_2 <= product_c[PW-2:CNTRW-1];
+            p_arg_2 <= product_c_asw;
         end
         axx_plus_bx <= cxx_plus_dx;
         if ( axx_plus_bx ) begin
             // p_arg_1 <= x0_1;
             p_arg_2 <= ax_plus_b_r;
-            cxx_plus_dx_plus_e_r <= product_c[PW-2:CNTRW-1] + b1st_c2nd_d3rd_e4th_f5th;
+            cxx_plus_dx_plus_e_r <= product_c_asw + b1st_c2nd_d3rd_e4th_f5th;
         end
         axxx_plus_bxx <= axx_plus_bx;
         if ( axxx_plus_bxx ) begin
             // p_arg_1 <= x0_1;
-            p_arg_2 <= product_c[PW-2:CNTRW-1];
+            p_arg_2 <= product_c_asw;
         end
         axxxx_plus_bxxx <= axxx_plus_bxx;
         if ( axxxx_plus_bxxx ) begin
             // p_arg_1 <= x0_1;
-            p_arg_2 <= product_c[PW-2:CNTRW-1];
+            p_arg_2 <= product_c_asw;
         end
         yx <= axxxx_plus_bxxx;
     end
@@ -693,43 +725,47 @@ always @(posedge clk) begin : calc_y
         ax_plus_b <= ax;
         if ( ax_plus_b ) begin
             // p_arg_1 <= x0_1;
-            p_arg_2 <= product_c[PW-2:CNTRW-1] + b;
+            p_arg_2 <= product_c_asw + b;
         end
         axx_bx_c <= ax_plus_b;
         if ( axx_bx_c ) begin
             // p_arg_1 <= x0_1;
-            p_arg_2 <= product_c[PW-2:CNTRW-1] + c;
+            p_arg_2 <= product_c_asw + c;
         end
         axxx_bxx_cx_d <= axx_bx_c;
         if ( axxx_bxx_cx_d ) begin
             // p_arg_1 <= x0_1;
-            p_arg_2 <= product_c[PW-2:CNTRW-1] + d;
+            p_arg_2 <= product_c_asw + d;
         end
         axxxx_bxxx_cxx_dx_e <= axxx_bxx_cx_d;
         if ( axxxx_bxxx_cxx_dx_e ) begin
             p_arg_1 <= x0_1 >>> 1; // 0.5f
-            p_arg_2 <= product_c[PW-2:CNTRW-1] + e;
+            p_arg_2 <= product_c_asw + e;
         end
         yx <= axxxx_bxxx_cxx_dx_e;
     end
     attn <= yx;
     if ( yx ) begin
-        m_intrp_d_i[OUTW-1] <= yx_i[ASW-1]; // Assign sign
-        m_intrp_d_i[OUTW-2:0] <= yx_i[INW-2:0];
-        // Check for overflow!
-        if ( overflow_xy_i_p ) begin
-            m_intrp_d_i[OUTW-2:0] <= ALL_ONES;
-        end
-        if ( overflow_xy_i_n ) begin
-            m_intrp_d_i[OUTW-2:0] <= ALL_ZERO;
-        end
-        m_intrp_dv_i <= 1;
-        if ( ATTENUATION ) begin // Conditional synthesis!
-            p_arg_1 <= s_signal_d_i;
-            if ( s_signal_dv ) begin
-                p_arg_1 <= $signed( s_signal_d );
+        if ( m_intrp_dr ) begin
+            m_intrp_d_i[OUTW-1] <= yx_i[ASW-1]; // Assign sign
+            m_intrp_d_i[OUTW-2:0] <= yx_i[INW-2:0];
+            // Check for overflow!
+            if ( overflow_xy_i_p ) begin
+                m_intrp_d_i[OUTW-2:0] <= ALL_ONES;
             end
-            p_arg_2 <= yx_i;
+            if ( overflow_xy_i_n ) begin
+                m_intrp_d_i[OUTW-2:0] <= ALL_ZERO;
+            end
+            m_intrp_dv_i <= 1;
+            if ( ATTENUATION ) begin // Conditional synthesis!
+                p_arg_1 <= {s_signal_d_i, 1'b0};
+                if ( s_signal_dv ) begin
+                    p_arg_1 <= $signed( {s_signal_d_i, 1'b0} );
+                end
+                p_arg_2 <= yx_i;
+            end
+        end else begin
+            yx <= 1;
         end
     end
     if ( ATTENUATION ) begin // Conditional synthesis!
