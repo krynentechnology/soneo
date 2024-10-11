@@ -229,6 +229,7 @@ localparam OUTW  = INPUT_WIDTH; // Output width
 localparam CHW   = clog2( NR_CHANNELS ); // Channel width
 localparam CHN   = NR_CHANNELS; // Number of channels
 localparam CNTRW = FRACTION_WIDTH; // Fraction and counter width
+localparam ASW   = INW + 6; // Reserved width for add and subtract
 
 input  wire             clk;
 input  wire             rst_n; // Synchronous reset, high when clk is stable!
@@ -382,9 +383,9 @@ wire [CNTRW:0] acc_fraction_c;
 assign acc_fraction_c = acc_fraction + { 1'b0, step };
 wire next_x_c;
 assign next_x_c = |acc_fraction_c[CNTRW:CNTRW-1];
+wire signed [ASW-1:0] yx_i;
 wire stop_exponential;
 assign stop_exponential = overflow || ( 0 == yx_i );
-wire signed [ASW-1:0] yx_i;
 
 /*============================================================================*/
 always @(posedge clk) begin : accumulate_fraction
@@ -444,7 +445,6 @@ always @(posedge clk) begin : accumulate_fraction
     end
 end // accumulate_fraction
 
-localparam ASW = INW+6; // Reserved width for add and subtract
 wire signed [ASW-1:0] p0_x_2;
 wire signed [ASW-1:0] p0_x_3;
 wire signed [ASW-1:0] p0_x_6;
