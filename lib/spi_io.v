@@ -94,7 +94,7 @@ output wire spi_wr;
 output wire [SPI_ADDR_WIDTH-1:0] spi_addr;
 input  wire [SPI_DATA_WIDTH-1:0] spi_data_rd; // Should be 0 when select = 0
 output wire [SPI_DATA_WIDTH-1:0] spi_data_wr;
-output wire [NR_MODULES-1:0] select;
+output wire [NR_MODULES-1:0] select; // Module bit mask
 output wire spi_intr;
 
 reg [SPI_DATA_WIDTH-1:0] m_spi_i = 0;

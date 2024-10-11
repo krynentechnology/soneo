@@ -46,6 +46,7 @@ reg rst_n = 0; // Synchronous reset, high when clk is stable!
 reg  [INW-1:0]   s_intrp1_d = 0;
 reg              s_intrp1_dv = 0;
 wire             s_intrp1_dr;
+wire             s_intrp1_chr;
 reg  [CNTRW-1:0] fraction1 = 0; // 1.CNTRW-1 fraction value
 reg  [2:0]       select1 = 0;
 reg  [CNTRW-1:0] s_signal1_d = SIGNAL_6DB;
@@ -62,6 +63,7 @@ interpolator intrp1(
     .s_intrp_ch(1'b0),
     .s_intrp_dv(s_intrp1_dv),
     .s_intrp_dr(s_intrp1_dr),
+    .s_intrp_chr(s_intrp1_chr),
     .fraction(fraction1),
     .select(select1),
     .s_signal_d(s_signal1_d),

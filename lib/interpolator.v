@@ -188,6 +188,7 @@ module interpolator #(
     (
     clk, rst_n, // Synchronous reset, high when clk is stable!
     s_intrp_d, s_intrp_ch, s_intrp_dv, s_intrp_dr, // _d = data, _ch = channel id
+    s_intrp_chr, // Ready for next channel when s_intrp_dr == 0
     fraction, // Fraction represents max. value 2.0 to allow down conversions
     select, // 3'b001 = just store data (when fraction = 0), skip interpolation!
             // 3'b010 = "head" quadratic interpolation
@@ -235,12 +236,13 @@ input  wire [INW-1:0]   s_intrp_d;
 input  wire [CHW-1:0]   s_intrp_ch;
 input  wire             s_intrp_dv;
 output wire             s_intrp_dr;
+output wire             s_intrp_chr;
 input  wire [CNTRW-1:0] fraction; // 1.CNTRW-1 fraction value
 input  wire [2:0]       select;
 input  wire [CNTRW-1:0] s_signal_d;
 input  wire             s_signal_dv; // Signal to attenuate valid
 output wire [OUTW-1:0]  m_intrp_d;
-output wire [CHW-1:0]   m_intrp_ch;
+output reg  [CHW-1:0]   m_intrp_ch = 0;
 output wire             m_intrp_dv;
 input  wire             m_intrp_dr;
 output wire [CNTRW-1:0] m_signal_d; // Valid one clock cycle after m_intrp_dv!
@@ -331,10 +333,14 @@ assign n2_c = n2[ intrp_ch ];
 wire exponential;
 assign exponential = ATTENUATION && (( POLYNOMIAL == "LINEAR" ) ||
     ( POLYNOMIAL == "2ND_ORDER" )) && !head && ( EXPONENTIAL == select );
+assign s_intrp_chr = yx & m_intrp_dr; // Set next channel already if required!
 
 /*============================================================================*/
 always @(posedge clk) begin : fifo
 /*============================================================================*/
+    if ( s0_i && !next_x ) begin    // Get different channel for next
+        m_intrp_ch_i <= s_intrp_ch; // interpolation if required!
+    end
     s_intrp_dr_i <= s_intrp_dr_i || next_x;
     if ( chs_intrp_dv ) begin
         s_intrp_dr_i <= 0;
@@ -369,7 +375,6 @@ always @(posedge clk) begin : fifo
 end // fifo
 
 assign s_intrp_dr = s_intrp_dr_i;
-assign m_intrp_ch = m_intrp_ch_i;
 
 reg [CNTRW-1:0] step = 0;
 reg [CNTRW:0] acc_fraction = 0;
@@ -377,6 +382,8 @@ wire [CNTRW:0] acc_fraction_c;
 assign acc_fraction_c = acc_fraction + { 1'b0, step };
 wire next_x_c;
 assign next_x_c = |acc_fraction_c[CNTRW:CNTRW-1];
+wire stop_exponential;
+assign stop_exponential = overflow || ( 0 == yx_i );
 wire signed [ASW-1:0] yx_i;
 
 /*============================================================================*/
@@ -416,8 +423,8 @@ always @(posedge clk) begin : accumulate_fraction
         if ( m_intrp_dr ) begin
             acc_fraction <= acc_fraction_c;
             if ( exponential ) begin
-                s0_i <= 1;
-                next_x <= overflow || ( 0 == yx_i );
+                s0_i <= ~stop_exponential;
+                next_x <= stop_exponential;
             end else begin
                 // Skip y(x) calculation when acc_fraction >= 1
                 s0_i <= ~next_x_c;
@@ -747,6 +754,7 @@ always @(posedge clk) begin : calc_y
     attn <= yx;
     if ( yx ) begin
         if ( m_intrp_dr ) begin
+            m_intrp_ch <= m_intrp_ch_i;
             m_intrp_d_i[OUTW-1] <= yx_i[ASW-1]; // Assign sign
             m_intrp_d_i[OUTW-2:0] <= yx_i[INW-2:0];
             // Check for overflow!
