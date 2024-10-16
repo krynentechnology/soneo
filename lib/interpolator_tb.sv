@@ -46,7 +46,7 @@ reg rst_n = 0; // Synchronous reset, high when clk is stable!
 reg  [INW-1:0]   s_intrp1_d = 0;
 reg              s_intrp1_dv = 0;
 wire             s_intrp1_dr;
-wire             s_intrp1_chr;
+wire             s_intrp1_nchr;
 reg  [CNTRW-1:0] fraction1 = 0; // 1.CNTRW-1 fraction value
 reg  [2:0]       select1 = 0;
 reg  [CNTRW-1:0] s_signal1_d = SIGNAL_6DB;
@@ -63,7 +63,7 @@ interpolator intrp1(
     .s_intrp_ch(1'b0),
     .s_intrp_dv(s_intrp1_dv),
     .s_intrp_dr(s_intrp1_dr),
-    .s_intrp_chr(s_intrp1_chr),
+    .s_intrp_nchr(s_intrp1_nchr),
     .fraction(fraction1),
     .select(select1),
     .s_signal_d(s_signal1_d),
@@ -109,15 +109,18 @@ defparam intrp2.NR_CHANNELS = 1;
 defparam intrp2.INPUT_WIDTH = INPUT_WIDTH;
 defparam intrp2.FRACTION_WIDTH = FRACTION_WIDTH;
 
-wire [INW-1:0]   s_intrp_d;
-wire [CHW-1:0]   s_intrp_ch;
-wire             s_intrp_dv;
+wire [INW-1:0]   s_intrp_d;  // Input for intrp3/4/5/6!
+wire [CHW-1:0]   s_intrp_ch; // Input for intrp3/4/5/6!
+wire             s_intrp_dv; // Input for intrp3/4/5/6!
 wire             s_intrp3_dr;
-reg  [CNTRW-1:0] fraction; // 1.CNTRW-1 fraction value
+wire             s_intrp3_nchr;
+reg  [CNTRW-1:0] fraction = 0; // 1.CNTRW-1 fraction value
+reg  [2:0]       select = 0;
 wire [OUTW-1:0]  m_intrp3_d;
 wire [CHW-1:0]   m_intrp3_ch;
 wire             m_intrp3_dv;
-reg              m_intrp3_dr;
+reg              m_intrp3_dr = 0;
+wire             m_intrp_dr; // Input for intrp4/5/6!
 wire             overflow3;
 
 interpolator intrp3(
@@ -127,7 +130,9 @@ interpolator intrp3(
     .s_intrp_ch(s_intrp_ch),
     .s_intrp_dv(s_intrp_dv),
     .s_intrp_dr(s_intrp3_dr),
+    .s_intrp_nchr(s_intrp3_nchr),
     .fraction(fraction),
+    .select(select),
     .m_intrp_d(m_intrp3_d),
     .m_intrp_ch(m_intrp3_ch),
     .m_intrp_dv(m_intrp3_dv),
@@ -142,7 +147,6 @@ defparam intrp3.FRACTION_WIDTH = FRACTION_WIDTH;
 wire             s_intrp4_dr;
 wire [OUTW-1:0]  m_intrp4_d;
 wire             m_intrp4_dv;
-reg              m_intrp4_dr;
 wire             overflow4;
 
 interpolator intrp4(
@@ -153,9 +157,10 @@ interpolator intrp4(
     .s_intrp_dv(s_intrp_dv),
     .s_intrp_dr(s_intrp4_dr),
     .fraction(fraction),
+    .select(select),
     .m_intrp_d(m_intrp4_d),
     .m_intrp_dv(m_intrp4_dv),
-    .m_intrp_dr(m_intrp4_dr),
+    .m_intrp_dr(m_intrp_dr),
     .overflow(overflow4));
 
 defparam intrp4.POLYNOMIAL = "3RD_ORDER";
@@ -166,7 +171,6 @@ defparam intrp4.FRACTION_WIDTH = FRACTION_WIDTH;
 wire             s_intrp5_dr;
 wire [OUTW-1:0]  m_intrp5_d;
 wire             m_intrp5_dv;
-reg              m_intrp5_dr;
 wire             overflow5;
 
 interpolator intrp5(
@@ -177,9 +181,10 @@ interpolator intrp5(
     .s_intrp_dv(s_intrp_dv),
     .s_intrp_dr(s_intrp5_dr),
     .fraction(fraction),
+    .select(select),
     .m_intrp_d(m_intrp5_d),
     .m_intrp_dv(m_intrp5_dv),
-    .m_intrp_dr(m_intrp5_dr),
+    .m_intrp_dr(m_intrp_dr),
     .overflow(overflow5));
 
 defparam intrp5.POLYNOMIAL = "4TH_ORDER";
@@ -190,7 +195,6 @@ defparam intrp5.FRACTION_WIDTH = FRACTION_WIDTH;
 wire             s_intrp6_dr;
 wire [OUTW-1:0]  m_intrp6_d;
 wire             m_intrp6_dv;
-reg              m_intrp6_dr;
 wire             overflow6;
 
 interpolator intrp6(
@@ -201,9 +205,10 @@ interpolator intrp6(
     .s_intrp_dv(s_intrp_dv),
     .s_intrp_dr(s_intrp6_dr),
     .fraction(fraction),
+    .select(select),
     .m_intrp_d(m_intrp6_d),
     .m_intrp_dv(m_intrp6_dv),
-    .m_intrp_dr(m_intrp6_dr),
+    .m_intrp_dr(m_intrp_dr),
     .overflow(overflow6));
 
 defparam intrp6.POLYNOMIAL = "5TH_ORDER";
@@ -212,6 +217,9 @@ defparam intrp6.INPUT_WIDTH = INPUT_WIDTH;
 defparam intrp6.FRACTION_WIDTH = FRACTION_WIDTH;
 
 always #5 clk = ~clk; // 100 MHz clock
+
+// Same intrp4, intrp5 and intrp6 input needs output synchronization!
+assign m_intrp_dr = m_intrp4_dv & m_intrp5_dv & m_intrp6_dv;
 
 /*============================================================================*/
 task setup_linear( input [INPUT_WIDTH-1:0] data,
@@ -248,7 +256,7 @@ begin
     // Ramp down sawtooth
     for ( i = 0; i < 10; i = i + 1 ) begin
         setup_linear( FACTOR_6DB, 0, intrp1.STORE );
-        setup_linear( -FACTOR_6DB, 0, intrp1.OUTPUT_P0 ); // Use last set fraction, output p0!
+        setup_linear( -FACTOR_6DB, 0, 0 );
     end
     setup_linear( 0, 0, intrp1.STORE ); // n1 = 0
     setup_linear( 0, ( FRACTION_1_0 / 20.0 ), 0 );
@@ -256,7 +264,7 @@ begin
     // Ramp up sawtooth
     for ( i = 0; i < 10; i = i + 1 ) begin
         setup_linear( -FACTOR_6DB, 0, intrp1.STORE );
-        setup_linear( FACTOR_6DB, ( FRACTION_1_0 / 20.0 ), intrp1.OUTPUT_P0 ); // Output p0!
+        setup_linear( FACTOR_6DB, ( FRACTION_1_0 / 20.0 ), 0 );
     end
     setup_linear( 0, 0, intrp1.STORE ); // n1 = 0
     setup_linear( 0, ( FRACTION_1_0 / 20.0 ), 0 );
@@ -408,54 +416,68 @@ initial begin
     s_intrp1_dv = 0;
     s_intrp2_dv = 0;
     m_intrp3_dr = 0;
-    m_intrp4_dr = 0;
-    m_intrp5_dr = 0;
-    m_intrp6_dr = 0;
     fraction1 = 0;
     fraction2 = 0;
     fraction = 0;
-    sg_enabled = 1;
+    select = 0;
+    sg_enabled = 0;
     swg_enabled = 0;
     mute = 0;
-    pos_minus_6dB = 1;
+    pos_minus_6dB = 0;
     neg_minus_6dB = 0;
     #100 // 0.1us
     $display( "Interpolator simulation started" );
     wait ( clk ) @( negedge clk );
-    $display( "Sine generator enabled" );
+    $display( "Linear and quadratic shape generation" );
     rst_n = 1;
     fork // Parallel operation
         setup_linear_shapes;
         setup_quadratic_shapes;
     join
+    select = intrp3.RESET;
+    wait ( clk ) @( negedge clk );
+    select = 0;
+    wait ( clk ) @( negedge clk );
+    #100 // 0.1us
+    $display( "Sine generator enabled" );
+    sg_enabled = 1;
+    pos_minus_6dB = 1;
     m_intrp3_dr = 1;
     fraction[CNTRW-2] = 1; // fraction = 0.5
     wait ( s_intrp_dv );
-    wait ( !s_intrp3_dr );
-    fraction = 0; // fraction = 0;
     wait ( !s_intrp3_dr ) @( negedge s_intrp3_dr );
+    wait ( !s_intrp3_dr ) @( negedge s_intrp3_dr );
+    wait ( !s_intrp3_dr ) @( negedge s_intrp3_dr );
+    fraction[CNTRW-2] = 0;
+    wait ( s_intrp_dv );
     wait ( !s_intrp3_dr ) @( negedge s_intrp3_dr );
     wait ( !s_intrp3_dr ) @( negedge s_intrp3_dr );
     wait ( !s_intrp3_dr ) @( negedge s_intrp3_dr );
     pos_minus_6dB = 0;
     neg_minus_6dB = 1;
+    wait ( s_intrp_dv );
     wait ( !s_intrp3_dr ) @( negedge s_intrp3_dr );
     wait ( !s_intrp3_dr ) @( negedge s_intrp3_dr );
     wait ( !s_intrp3_dr ) @( negedge s_intrp3_dr );
-    wait ( !s_intrp3_dr ) @( negedge s_intrp3_dr );
-    pos_minus_6dB = 0;
     neg_minus_6dB = 0;
     #100000 // 100us
     mute = 1;
     $display( "Mute" );
     #5000 // 5us
-    m_intrp4_dr = 1;
-    m_intrp5_dr = 1;
-    m_intrp6_dr = 1;
+    m_intrp3_dr = 0;
     sg_enabled = 0;
-    swg_enabled = 1;
     mute = 0;
+    select = intrp3.RESET;
+    wait ( clk ) @( negedge clk );
+    select = 0;
+    wait ( clk ) @( negedge clk );
+    #100 // 0.1us
     $display( "Sweep generator enabled" );
+    swg_enabled = 1;
+    fraction[CNTRW-2] = 1; // fraction = 0.5
+    wait ( s_intrp_dv );
+    wait ( !s_intrp_dv );
+    fraction[CNTRW-2] = 0;
     #200000 // 200us
    $finish;
 end
@@ -470,18 +492,20 @@ reg signed [INPUT_WIDTH-1:0] data_intrp_out_2 = 0;
 /*============================================================================*/
 always @(posedge clk) begin : collect_intrp_data
 /*============================================================================*/
-    if ( s_intrp_dv  ) begin
-        case ( s_intrp_ch )
-            0 : begin
-                data_intrp_in_0 <= s_intrp_d;
-            end
-            1 : begin
-                data_intrp_in_1 <= s_intrp_d;
-            end
-            2 : begin
-                data_intrp_in_2 <= s_intrp_d;
-            end
-        endcase
+    if ( s_intrp_dv ) begin
+        if ( s_intrp3_dr && m_intrp3_dr ) begin
+            case ( s_intrp_ch )
+                0 : begin
+                    data_intrp_in_0 <= s_intrp_d;
+                end
+                1 : begin
+                    data_intrp_in_1 <= s_intrp_d;
+                end
+                2 : begin
+                    data_intrp_in_2 <= s_intrp_d;
+                end
+            endcase
+        end
     end
     if ( sg_enabled ) begin
         if ( m_intrp3_dv ) begin
@@ -498,7 +522,10 @@ always @(posedge clk) begin : collect_intrp_data
             endcase
         end
     end
-    else begin
+    else if ( swg_enabled ) begin
+        if ( s_intrp_dv & s_intrp4_dr ) begin
+            data_intrp_in_2 <= s_intrp_d;
+        end
         if ( m_intrp4_dv ) begin
             data_intrp_out_0 <= m_intrp4_d;
         end
@@ -537,8 +564,8 @@ end
 always @(posedge clk) begin : sine_generator
 /*============================================================================*/
     if ( sg_enabled ) begin
-        sg_dv <= sg_dv & ~s_intrp3_dr;
-        if ( !sg_dv ) begin
+        sg_dv <= sg_dv & s_intrp3_dr;
+        if ( s_intrp3_dr ) begin
             if ( pos_minus_6dB ) begin
                 sg_d <= 0;
                 sg_d[INPUT_WIDTH-1:INPUT_WIDTH-2] <= 2'b01;
@@ -554,7 +581,7 @@ always @(posedge clk) begin : sine_generator
             end
             sg_dv <= 1;
         end
-        else if ( s_intrp3_dr && !( pos_minus_6dB || neg_minus_6dB )) begin
+        else if ( s_intrp3_nchr ) begin
             sg_ch <= sg_ch + 1;
             if (( NR_CHANNELS - 1 ) == sg_ch ) begin
                 sg_ch <= 0;
@@ -589,8 +616,8 @@ always @(posedge clk) begin : sweep_generator
 /*============================================================================*/
     if ( swg_enabled ) begin
         if ( swg_step < NR_STEPS ) begin
-            swg_dv <= swg_dv & ~( s_intrp4_dr & s_intrp5_dr & s_intrp6_dr );
-            if ( !swg_dv ) begin
+            swg_dv <= swg_dv & s_intrp4_dr & s_intrp5_dr & s_intrp6_dr;
+            if ( s_intrp4_dr & s_intrp5_dr & s_intrp6_dr ) begin
                 swg_delta = swg_step / $itor( NR_STEPS );
                 swg_t = F_INTERVAL * swg_delta;
                 swg_phase = MATH_2_PI * swg_t * ( F_START + (( F_END - F_START ) * swg_delta / 2 ));

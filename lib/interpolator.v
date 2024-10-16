@@ -188,13 +188,13 @@ module interpolator #(
     (
     clk, rst_n, // Synchronous reset, high when clk is stable!
     s_intrp_d, s_intrp_ch, s_intrp_dv, s_intrp_dr, // _d = data, _ch = channel id
-    s_intrp_chr, // Ready for next channel when s_intrp_dr == 0
+    s_intrp_nchr, // Ready for next channel when s_intrp_dr == 0
     fraction, // Fraction represents max. value 2.0 to allow down conversions
     select, // 3'b001 = just store data (when fraction = 0), skip interpolation!
             // 3'b010 = "head" quadratic interpolation
-            // 3'b011 = store and output p0 value before start interpolation
-            // 3'b100 = use fraction as exponential attenuation (ATTENUATION=1,
+            // 3'b011 = use fraction as exponential attenuation (ATTENUATION=1,
             //          POLYNOMIAL="LINEAR", POLYNOMIAL="2ND_ORDER" )
+            // 3'b111 = reset internal state
     s_signal_d, s_signal_dv, // Signal to be attenuated when valid (_dv)
     m_intrp_d, m_intrp_ch, m_intrp_dv, m_intrp_dr, // _dv = data valid, _dr = data ready
     m_signal_d, // Attenuated signal
@@ -221,8 +221,8 @@ endfunction
 
 localparam [2:0] STORE = 3'b001;
 localparam [2:0] HEAD = 3'b010;
-localparam [2:0] OUTPUT_P0 = 3'b011; // Store and output p0!
 localparam [2:0] EXPONENTIAL = 3'b100; // Exponential signal attenuation!
+localparam [2:0] RESET = 3'b111; // Reset internal state
 
 localparam INW   = INPUT_WIDTH; // Input  width
 localparam OUTW  = INPUT_WIDTH; // Output width
@@ -237,7 +237,7 @@ input  wire [INW-1:0]   s_intrp_d;
 input  wire [CHW-1:0]   s_intrp_ch;
 input  wire             s_intrp_dv;
 output wire             s_intrp_dr;
-output wire             s_intrp_chr;
+output wire             s_intrp_nchr;
 input  wire [CNTRW-1:0] fraction; // 1.CNTRW-1 fraction value
 input  wire [2:0]       select;
 input  wire [CNTRW-1:0] s_signal_d;
@@ -293,38 +293,26 @@ wire signed [INW-1:0] n2_c;
 
 // Booleans
 reg s0 = 0;
-reg s0_i = 0;
-reg s0_ii = 0;
+reg s1 = 0;
+reg s2 = 0;
 reg next_x = 0;
-reg output_p0 = 0;
 reg head = 0;
 
 // Boolean state
 reg yx = 0;
 
-reg s_intrp_dr_i = 0;
+reg [CHN-1:0] s_intrp_dr_i = {(CHN){1'b1}};
+wire s_intrp_dr_c;
+assign s_intrp_dr_c = s_intrp_dr_i[s_intrp_ch];
 reg [CHW-1:0] m_intrp_ch_i = 0;
 reg signed [OUTW-1:0] m_intrp_d_i = 0;
 
 reg m_intrp_dv_i = 0;
 wire chs_intrp_dv; // Channel select valid
-assign chs_intrp_dv = s_intrp_dv && s_intrp_dr_i && ( s_intrp_ch < NR_CHANNELS );
-
-integer i = 0;
-/*============================================================================*/
-initial begin
-/*============================================================================*/
-    for ( i = 0; i < CHN; i = i + 1 ) begin // Initialize data memory
-        p2[i] = 0;
-        p1[i] = 0;
-        p0[i] = 0;
-        n1[i] = 0;
-        n2[i] = 0;
-    end
-end
+assign chs_intrp_dv = s_intrp_dv && s_intrp_dr_c && ( s_intrp_ch < NR_CHANNELS );
 
 wire [CHW-1:0] intrp_ch;
-assign intrp_ch = s_intrp_dr_i ? s_intrp_ch : m_intrp_ch_i;
+assign intrp_ch = s_intrp_dr_c ? s_intrp_ch : m_intrp_ch_i;
 assign p2_c = p2[ intrp_ch ];
 assign p1_c = p1[ intrp_ch ];
 assign p0_c = p0[ intrp_ch ];
@@ -334,17 +322,19 @@ assign n2_c = n2[ intrp_ch ];
 wire exponential;
 assign exponential = ATTENUATION && (( POLYNOMIAL == "LINEAR" ) ||
     ( POLYNOMIAL == "2ND_ORDER" )) && !head && ( EXPONENTIAL == select );
-assign s_intrp_chr = yx & m_intrp_dr; // Set next channel already if required!
+assign s_intrp_nchr = yx & m_intrp_dr; // Set next channel already if required!
 
 /*============================================================================*/
 always @(posedge clk) begin : fifo
 /*============================================================================*/
-    if ( s0_i && !next_x ) begin    // Get different channel for next
+    if ( next_x ) begin
+        s_intrp_dr_i[m_intrp_ch_i] <= 1;
+    end
+    if ( s2 )  begin     // Get different channel for next
         m_intrp_ch_i <= s_intrp_ch; // interpolation if required!
     end
-    s_intrp_dr_i <= s_intrp_dr_i || next_x;
     if ( chs_intrp_dv ) begin
-        s_intrp_dr_i <= 0;
+        s_intrp_dr_i[s_intrp_ch] <= 0;
         m_intrp_ch_i <= s_intrp_ch;
         if ( POLYNOMIAL == "LINEAR" ) begin // Conditional synthesis!
             { p0[ intrp_ch ], n1[ intrp_ch ] } <= { n1_c, s_intrp_d };
@@ -364,84 +354,106 @@ always @(posedge clk) begin : fifo
               n1[ intrp_ch ],
               n2[ intrp_ch ] } <= { p1_c, p0_c, n1_c, n2_c, s_intrp_d };
         end
+        if ( POLYNOMIAL == "2ND_ORDER" ) begin // Conditional synthesis!
+            head <= ( HEAD == select );
+        end
     end
     if ( exponential && m_intrp_dv_i ) begin // Conditional synthesis!
         p1[ intrp_ch ] <= -m_intrp_d_i; // y(x) = ax + b => b = 0
         p0[ intrp_ch ] <= 0; // y(x) = x(ax + b) + c => b = 0, c = 0
         n1[ intrp_ch ] <= m_intrp_d_i; // 2nd order only for "tail"
     end
-    if ( !rst_n ) begin
-        s_intrp_dr_i <= 1;
+    if ( !rst_n || ( RESET == select )) begin
+        s_intrp_dr_i <= {(CHN){1'b1}};
+        m_intrp_ch_i <= 0;
+        head <= 0;
     end
 end // fifo
 
-assign s_intrp_dr = s_intrp_dr_i;
+assign s_intrp_dr = s_intrp_dr_c;
 
-reg [CNTRW-1:0] step = 0;
-reg [CNTRW:0] acc_fraction = 0;
+reg [CNTRW-1:0] step[0:CHN-1];
+reg [CNTRW-1:0] step_i = 0;
+reg [CNTRW:0] acc_fraction[0:CHN-1];
+reg [CNTRW:0] acc_fraction_i = 0;
 wire [CNTRW:0] acc_fraction_c;
-assign acc_fraction_c = acc_fraction + { 1'b0, step };
+assign acc_fraction_c = acc_fraction_i + { 1'b0, step_i };
 wire next_x_c;
 assign next_x_c = |acc_fraction_c[CNTRW:CNTRW-1];
 wire signed [ASW-1:0] yx_i;
 wire stop_exponential;
 assign stop_exponential = overflow || ( 0 == yx_i );
 
+integer i = 0;
+/*============================================================================*/
+initial begin
+/*============================================================================*/
+    for ( i = 0; i < CHN; i = i + 1 ) begin // Initialize data memory
+        p2[i] = 0;
+        p1[i] = 0;
+        p0[i] = 0;
+        n1[i] = 0;
+        n2[i] = 0;
+        step[i] = 0;
+        acc_fraction[i] = 0;
+    end
+    s_intrp_dr_i = {(CHN){1'b1}};
+end
+
 /*============================================================================*/
 always @(posedge clk) begin : accumulate_fraction
 /*============================================================================*/
-    s0_i <= 0;
-    s0_ii <= s0_i;
-    s0 <= s0_ii; // Two clock cycles delay for same s0/yx timing as input
+    s2 <= 0;
+    s1 <= s2; // Two clock cycles delay for same s0/yx timing as input
+    s0 <= s1; // s1 timing matches chs_intrp_dv!
     next_x <= 0;
-    output_p0 <= 0;
-    if ( chs_intrp_dv ) begin
-        s0 <= ~next_x_c;
+    if ( s0 ) begin // Store channel step and acc_fraction
+        step[m_intrp_ch_i] <= step_i;
+        acc_fraction[m_intrp_ch_i] <= { 2'b0, acc_fraction_c[CNTRW-2:0]};
+        if ( exponential ) begin // Conditional synthesis!
+            acc_fraction[m_intrp_ch_i] <= acc_fraction_c;
+        end
+    end
+    if ( s1 ) begin // Restore (updated) channel step and acc_fraction
+        step_i <= step[m_intrp_ch_i];
+        acc_fraction_i <= acc_fraction[m_intrp_ch_i];
+    end
+    if ( chs_intrp_dv ) begin // Overrules s1 step and acc_fraction!
+        s0 <= 1;
         if ( fraction != 0 ) begin // Ignore fraction when zero!
-            step <= fraction;
-            acc_fraction <= { 2'b00, fraction[CNTRW-2:0] };
+            step_i <= fraction;
+            acc_fraction_i <= 0;
             if ( exponential ) begin // Conditional synthesis!
-                step <= 0;
-                acc_fraction <= { 1'b0, fraction };
+                step_i <= 0;
+                acc_fraction_i <= { 1'b0, fraction };
             end else begin
                 next_x <= fraction[CNTRW-1];
                 // No need to start when fraction >= 1, but fraction is stored for next iteration!
                 s0 <= ~fraction[CNTRW-1];
             end
         end
-        else if (( STORE == select ) || ( 0 == step )) begin
+        else if (( STORE == select ) || ( 0 == step_i )) begin
             s0 <= 0; // Fraction step has no value yet!
             next_x <= 1;
-        end
-        if ( POLYNOMIAL == "LINEAR" ) begin // Conditional synthesis!
-            output_p0 <= ( OUTPUT_P0 == select );
-        end
-        if ( POLYNOMIAL == "2ND_ORDER" ) begin // Conditional synthesis!
-            head <= ( HEAD == select );
         end
     end
     if ( yx ) begin
         if ( m_intrp_dr ) begin
-            acc_fraction <= acc_fraction_c;
+            s2 <= 1;
+            next_x <= next_x_c;
             if ( exponential ) begin
-                s0_i <= ~stop_exponential;
+                s2 <= ~stop_exponential;
                 next_x <= stop_exponential;
-            end else begin
-                // Skip y(x) calculation when acc_fraction >= 1
-                s0_i <= ~next_x_c;
-                next_x <= next_x_c;
-                if ( next_x_c ) begin
-                    acc_fraction[CNTRW:CNTRW-1] <= 0;
-                end
             end
         end
     end
-    if ( !rst_n ) begin
+    if ( !rst_n || ( RESET == select )) begin
         s0 <= 0;
+        s1 <= 0;
+        s2 <= 0;
         next_x <= 0;
-        step <= 0;
-        acc_fraction <= 0;
-        head <= 0;
+        step_i <= 0;
+        acc_fraction_i <= 0;
     end
 end // accumulate_fraction
 
@@ -554,8 +566,6 @@ end // multiplication_and_calc_coeff
 reg ax_x_6 = 0;
 reg ax_x_24 = 0;
 reg ax = 0;
-reg ax_i = 0;
-reg ax_ii = 0;
 reg ax_plus_b = 0;
 reg ax_plus_b_x_24 = 0;
 reg axx_bx_c = 0;
@@ -577,7 +587,7 @@ localparam [INW-2:0] ALL_ZERO = 0; // 00000...
 localparam [INW-2:0] ALL_ONES = -1; // 11111...
 
 wire signed [CNTRW:0] x0_1;
-assign x0_1 = acc_fraction;
+assign x0_1 = acc_fraction_i;
 
 wire signed [ASW-1:0] product_c_asw;
 assign product_c_asw = {product_c[PW-1], product_c[PW-4:CNTRW-1]};
@@ -609,22 +619,12 @@ always @(posedge clk) begin : calc_y
     m_intrp_dv_i <= m_intrp_dv_i & !m_intrp_dr;
     if ( POLYNOMIAL == "LINEAR" ) begin // Conditional synthesis!
         // y(x) = ax + b
-        ax_i <= 0;
-        ax_ii <= ax_i;
-        ax <= s0 | ax_ii;
-        if ( output_p0 && s0 ) begin
-            ax <= 0; // Delay two clock cycles to match "LINEAR" timing!
-            ax_i <= 1;
-        end
+        ax <= s0;
         if ( ax ) begin
             p_arg_1 <= x0_1;
             p_arg_2 <= n1_minus_p0;
         end
         yx <= ax;
-        if ( output_p0 ) begin
-            m_intrp_d_i <= p0_c;
-            m_intrp_dv_i <= 1;
-        end
     end
     if ( POLYNOMIAL == "2ND_ORDER" ) begin // Conditional synthesis!
         // y(x) = x(ax + b) + c
@@ -751,29 +751,29 @@ always @(posedge clk) begin : calc_y
         end
         yx <= axxxx_bxxx_cxx_dx_e;
     end
-    attn <= yx;
     if ( yx ) begin
+        m_intrp_ch <= m_intrp_ch_i;
+        m_intrp_d_i[OUTW-1] <= yx_i[ASW-1]; // Assign sign
+        m_intrp_d_i[OUTW-2:0] <= yx_i[INW-2:0];
+        // Check for overflow!
+        if ( overflow_xy_i_p ) begin
+            m_intrp_d_i[OUTW-2:0] <= ALL_ONES;
+        end
+        if ( overflow_xy_i_n ) begin
+            m_intrp_d_i[OUTW-2:0] <= ALL_ZERO;
+        end
+        m_intrp_dv_i <= 1;
+        if ( ATTENUATION ) begin // Conditional synthesis!
+            p_arg_1 <= {s_signal_d_i, 1'b0};
+            if ( s_signal_dv ) begin
+                p_arg_1 <= $signed( {s_signal_d_i, 1'b0} );
+            end
+            p_arg_2 <= yx_i;
+        end
+        yx <= 1;
         if ( m_intrp_dr ) begin
-            m_intrp_ch <= m_intrp_ch_i;
-            m_intrp_d_i[OUTW-1] <= yx_i[ASW-1]; // Assign sign
-            m_intrp_d_i[OUTW-2:0] <= yx_i[INW-2:0];
-            // Check for overflow!
-            if ( overflow_xy_i_p ) begin
-                m_intrp_d_i[OUTW-2:0] <= ALL_ONES;
-            end
-            if ( overflow_xy_i_n ) begin
-                m_intrp_d_i[OUTW-2:0] <= ALL_ZERO;
-            end
-            m_intrp_dv_i <= 1;
-            if ( ATTENUATION ) begin // Conditional synthesis!
-                p_arg_1 <= {s_signal_d_i, 1'b0};
-                if ( s_signal_dv ) begin
-                    p_arg_1 <= $signed( {s_signal_d_i, 1'b0} );
-                end
-                p_arg_2 <= yx_i;
-            end
-        end else begin
-            yx <= 1;
+            yx <= 0;
+            attn <= 1;
         end
     end
     if ( ATTENUATION ) begin // Conditional synthesis!
@@ -793,7 +793,7 @@ always @(posedge clk) begin : calc_y
             m_signal_d_i[CNTRW-2:0] <= {( CNTRW - 1 ){1'b0}};
         end
     end
-    if ( !rst_n ) begin
+    if ( !rst_n || ( RESET == select )) begin
         ax <= 0;
         ax_x_6 <= 0;
         ax_x_24 <= 0;
