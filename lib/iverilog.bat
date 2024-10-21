@@ -25,7 +25,8 @@ if "%1"=="" (
   iverilog -o randomizer_tb.out -I .. ..\randomizer.v ..\randomizer_tb.sv
   iverilog -o sine_wg_cor_tb.out -I .. ..\sine_wg_cor.v ..\sine_wg_cor_tb.sv
   iverilog -o spi_tb.out -I .. ..\spi_master.v ..\spi_slave.v ..\spi_io.v ..\spi_tb.sv
-)  
+  iverilog -o vu_meter_tb.out -I .. ..\vu_meter.v ..\vu_meter_tb.sv
+)
 if not "%1"=="" (
   iverilog -DGTK_WAVE -o aes_tb.out -I .. ..\aes_dec.v ..\aes_enc.v ..\aes_tb.sv
   iverilog -DGTK_WAVE -o apcm_sbc4_tb.out -I .. ..\apcm_sbc4_enc.v ..\apcm_sbc4_dec.v ..\apcm_sbc4_tb.sv
@@ -36,7 +37,8 @@ if not "%1"=="" (
   iverilog -DGTK_WAVE -o randomizer_tb.out -I .. ..\randomizer.v ..\randomizer_tb.sv
   iverilog -DGTK_WAVE -o sine_wg_cor_tb.out -I .. ..\sine_wg_cor.v ..\sine_wg_cor_tb.sv
   iverilog -DGTK_WAVE -o spi_tb.out -I .. ..\spi_master.v ..\spi_slave.v ..\spi_io.v ..\spi_tb.sv
-)  
+  iverilog -DGTK_WAVE -o vu_meter_tb.out -I .. ..\vu_meter.v ..\vu_meter_tb.sv
+)
 if exist aes_tb.out vvp aes_tb.out
 if exist apcm_sbc4_tb.out vvp apcm_sbc4_tb.out
 if exist compander_tb.out vvp compander_tb.out
@@ -46,5 +48,6 @@ if exist interpolator_tb.out vvp interpolator_tb.out
 if exist randomizer_tb.out vvp randomizer_tb.out
 if exist sine_wg_cor_tb.out vvp sine_wg_cor_tb.out
 if exist spi_tb.out vvp spi_tb.out
+if exist vu_meter_tb.out vvp vu_meter_tb.out
 cd ..
 :END
