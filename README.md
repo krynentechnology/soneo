@@ -11,4 +11,5 @@
   <li><a href="lib/randomizer.v">Randomizer</a>  (periodic noise generator, Galois LFSR based)</li>
   <li><a href="lib/sine_wg_cor.v">Sine Wave Generator</a>  (CORDIC algorithm based)</li>
   <li><a href="lib/spi_slave.v">SPI</a>  (master/slave and io - read/write, interrupt)</li>
+  <li><a href="lib/vu_meter.v">VU meter</a></li>
 </ul>
