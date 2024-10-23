@@ -221,7 +221,7 @@ endfunction
 
 localparam [2:0] STORE = 3'b001;
 localparam [2:0] HEAD = 3'b010;
-localparam [2:0] EXPONENTIAL = 3'b100; // Exponential signal attenuation!
+localparam [2:0] EXPONENTIAL = 3'b011; // Exponential signal attenuation!
 localparam [2:0] RESET = 3'b111; // Reset internal state
 
 localparam INW   = INPUT_WIDTH; // Input  width
@@ -419,11 +419,12 @@ always @(posedge clk) begin : accumulate_fraction
         acc_fraction_i <= acc_fraction[m_intrp_ch_i];
     end
     if ( chs_intrp_dv ) begin // Overrules s1 step and acc_fraction!
-        s0 <= 1;
+        s0 <= ~next_x;
         if ( fraction != 0 ) begin // Ignore fraction when zero!
             step_i <= fraction;
             acc_fraction_i <= 0;
             if ( exponential ) begin // Conditional synthesis!
+                s0 <= 1;
                 step_i <= 0;
                 acc_fraction_i <= { 1'b0, fraction };
             end else begin
