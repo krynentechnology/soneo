@@ -72,7 +72,7 @@ localparam COUNTER_WIDTH = clog2( OUTPUT_WIDTH );
 reg [OUTPUT_WIDTH-1:0] lfsr;
 reg [OUTPUT_WIDTH-1:0] lfsr_i;
 reg [OUTPUT_WIDTH-1:0] lfsr_ch[0:NR_CHANNELS-1];
-reg [OUTPUT_WIDTH-2:0] LFSR_TAP; // Constant, see init_lsfr_tap!
+reg [OUTPUT_WIDTH-1:0] LFSR_TAP; // Constant, see init_lsfr_tap!
 reg [COUNTER_WIDTH-1:0] i;
 
 /*============================================================================*/
@@ -120,7 +120,7 @@ initial begin : init_lsfr_tap
     end
     // Tap points to insert XNOR gates as feedback, (2^OUTPUT_WIDTH)-1 numbers are
     // cycled through before the sequence is repeated (see Xilinx XAPP052)
-    LFSR_TAP[OUTPUT_WIDTH-2:0] = 0;
+    LFSR_TAP[OUTPUT_WIDTH-1:0] = 0;
     case ( OUTPUT_WIDTH )
         3  : begin LFSR_TAP[2] = 1'b1; end
         4  : begin LFSR_TAP[3] = 1'b1; end
