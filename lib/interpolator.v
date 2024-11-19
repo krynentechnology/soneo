@@ -321,8 +321,10 @@ assign n2_c = n2[ intrp_ch ];
 
 wire exponential;
 assign exponential = ATTENUATION && (( POLYNOMIAL == "LINEAR" ) ||
-    ( POLYNOMIAL == "2ND_ORDER" )) && !head && ( EXPONENTIAL == select );
+    ( POLYNOMIAL == "2ND_ORDER" )) && ( EXPONENTIAL == select );
 assign s_intrp_nchr = yx & m_intrp_dr; // Set next channel already if required!
+wire reset;
+assign reset = !rst_n || ( RESET == select );
 
 /*============================================================================*/
 always @(posedge clk) begin : fifo
@@ -355,15 +357,22 @@ always @(posedge clk) begin : fifo
               n2[ intrp_ch ] } <= { p1_c, p0_c, n1_c, n2_c, s_intrp_d };
         end
         if ( POLYNOMIAL == "2ND_ORDER" ) begin // Conditional synthesis!
-            head <= ( HEAD == select );
+            head <= ( HEAD == select ) || // Fraction < 1, ramp down!
+                (( EXPONENTIAL == select ) && !fraction[CNTRW-1] );
         end
     end
     if ( exponential && m_intrp_dv_i ) begin // Conditional synthesis!
-        p1[ intrp_ch ] <= -m_intrp_d_i; // y(x) = ax + b => b = 0
-        p0[ intrp_ch ] <= 0; // y(x) = x(ax + b) + c => b = 0, c = 0
-        n1[ intrp_ch ] <= m_intrp_d_i; // 2nd order only for "tail"
+        if ( fraction[CNTRW-1] ) begin // Fraction > 1, ramp up!
+            p1[ intrp_ch ] <= -m_intrp_d_i; // y(x) = ax + b => b = 0
+            p0[ intrp_ch ] <= 0; // y(x) = x(ax + b) + c => b = 0, c = 0
+            n1[ intrp_ch ] <= m_intrp_d_i;
+        end else begin // Fraction < 1, ramp down!
+            p0[ intrp_ch ] <=  m_intrp_d_i; // y(x) = ax + b => b = 0
+            n1[ intrp_ch ] <= 0; // y(x) = x(ax + b) + c => b = 0, c = 0
+            n2[ intrp_ch ] <=  -m_intrp_d_i;
+        end
     end
-    if ( !rst_n || ( RESET == select )) begin
+    if ( reset ) begin
         s_intrp_dr_i <= {(CHN){1'b1}};
         m_intrp_ch_i <= 0;
         head <= 0;
@@ -448,7 +457,7 @@ always @(posedge clk) begin : accumulate_fraction
             end
         end
     end
-    if ( !rst_n || ( RESET == select )) begin
+    if ( reset ) begin
         s0 <= 0;
         s1 <= 0;
         s2 <= 0;
@@ -794,7 +803,7 @@ always @(posedge clk) begin : calc_y
             m_signal_d_i[CNTRW-2:0] <= {( CNTRW - 1 ){1'b0}};
         end
     end
-    if ( !rst_n || ( RESET == select )) begin
+    if ( reset ) begin
         ax <= 0;
         ax_x_6 <= 0;
         ax_x_24 <= 0;
