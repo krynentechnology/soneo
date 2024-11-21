@@ -144,7 +144,7 @@ always @(posedge clk) begin : collect_eq_data
             end
         endcase
     end
-end
+end // collect_eq_data
 
 ////////////////// Initializing EQ coefficients ////////////////////////////////
 /*============================================================================*/
@@ -161,7 +161,7 @@ function signed [EQ_COEFF_WIDTH-1:0] signed_eq_coeff( input real eq_coeff );
             signed_eq_coeff = $signed( eq_coeff_r );
         end
     end
-endfunction
+endfunction // signed_eq_coeff
 
 // 1000Hz notch filter (Q = 0.7071)
 localparam signed [EQ_COEFF_WIDTH-1:0] A0_1KHz = signed_eq_coeff( 0.9155020528055772 );
@@ -183,8 +183,8 @@ localparam signed [EQ_COEFF_WIDTH-1:0] B1_16KHz = signed_eq_coeff( -0.9023208975
 localparam signed [EQ_COEFF_WIDTH-1:0] B2_16KHz = signed_eq_coeff( -0.8046417950901026 );
 
 integer i;
-
 reg signed [EQ_COEFF_WIDTH-1:0] eq_ram_coeff[NR_EQ_COEFF-1:0];
+
 /*============================================================================*/
 initial begin : init_eq_ram_coeff
 /*============================================================================*/
@@ -224,7 +224,7 @@ initial begin : init_eq_ram_coeff
             end
         endcase
     end
-end
+end // init_eq_ram_coeff
 
 reg signed [EQ_COEFF_WIDTH-1:0] eq_ram_coeff_A0_10[NR_EQ_COEFF-1:0];
 /*============================================================================*/
@@ -236,7 +236,7 @@ initial begin : init_eq_ram_coeff_A0_10
             eq_ram_coeff_A0_10[i][EQ_COEFF_WIDTH-4] = 1; // Set every A0 parameter to 1.0 { in a range (-8.0, 8.0) }
         end
     end
-end
+end // init_eq_ram_coeff_A0_10
 
 reg signed [EQ_COEFF_WIDTH-1:0] eq_ram_coeff_A0_15[NR_EQ_COEFF-1:0];
 /*============================================================================*/
@@ -251,10 +251,12 @@ initial begin : init_eq_ram_coeff_A0_15
             eq_ram_coeff_A0_15[i][EQ_COEFF_WIDTH-4] = 1; // Set all other A0 parameter to 1.0 { in a range (-8.0, 8.0) }
         end
     end
-end
+end // init_eq_ram_coeff_A0_15
 
 reg signed [EQ_COEFF_WIDTH-1:0] eq_ram_coeff_A0_05[NR_EQ_COEFF-1:0];
+/*============================================================================*/
 initial begin : init_eq_ram_coeff_A0_05
+/*============================================================================*/
     for ( i = 0; i < NR_EQ_COEFF; i = i + 1 ) begin
         eq_ram_coeff_A0_05[i] = 0;
         if ( 0 == i ) begin
@@ -264,7 +266,7 @@ initial begin : init_eq_ram_coeff_A0_05
             eq_ram_coeff_A0_05[i][EQ_COEFF_WIDTH-4] = 1; // Set all other A0 parameter to 1.0 { in a range (-8.0, 8.0) }
         end
     end
-end
+end // init_eq_ram_coeff_A0_05
 
 ////////////////// Selection EQ coefficients ///////////////////////////////////
 reg [EQ_COEFF_WIDTH-1:0] i_eq_coeff;
@@ -285,7 +287,7 @@ always @(posedge clk) begin : eq_coeff_access
             i_eq_coeff <= eq_ram_coeff_A0_05[eq_coeff_addr];
         end
     endcase
-end
+end // eq_coeff_access
 
 assign eq_coeff = i_eq_coeff;
 
@@ -335,7 +337,7 @@ always @(posedge clk) begin : sine_generator
         sg_dv <= 0;
         sg_ch <= 0;
     end
-end
+end // sine_generator
 
 assign s_eq_d = sg_d;
 assign s_eq_ch = sg_ch;

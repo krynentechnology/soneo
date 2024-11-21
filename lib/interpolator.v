@@ -298,8 +298,9 @@ reg s2 = 0;
 reg next_x = 0;
 reg head = 0;
 
-// Boolean state
+// Boolean (one hot) states
 reg yx = 0;
+reg attn = 0;
 
 reg [CHN-1:0] s_intrp_dr_i = {(CHN){1'b1}};
 wire s_intrp_dr_c;
@@ -361,7 +362,7 @@ always @(posedge clk) begin : fifo
                 (( EXPONENTIAL == select ) && !fraction[CNTRW-1] );
         end
     end
-    if ( exponential && m_intrp_dv_i ) begin // Conditional synthesis!
+    if ( exponential && attn ) begin // Conditional synthesis!
         if ( fraction[CNTRW-1] ) begin // Fraction > 1, ramp up!
             p1[ intrp_ch ] <= -m_intrp_d_i; // y(x) = ax + b => b = 0
             p0[ intrp_ch ] <= 0; // y(x) = x(ax + b) + c => b = 0, c = 0
@@ -572,7 +573,7 @@ always @(*) begin : multiplication_and_calc_coeff
     b1st_c2nd_d3rd_e4th_f5th = {{ ( ASW - INW ){p0_c[INW-1]}}, p0_c};
 end // multiplication_and_calc_coeff
 
-// Boolean states
+// Boolean (one hot) states
 reg ax_x_6 = 0;
 reg ax_x_24 = 0;
 reg ax = 0;
@@ -587,7 +588,6 @@ reg axx_plus_bx = 0;
 reg cxx_plus_dx = 0;
 reg axxx_plus_bxx = 0;
 reg axxxx_plus_bxxx = 0;
-reg attn = 0;
 
 reg signed [ASW-1:0] ax_plus_b_r = 0;
 reg signed [ASW-1:0] cx_plus_d_r = 0;
@@ -627,6 +627,9 @@ reg signed [CNTRW-1:0] m_signal_d_i = 0;
 always @(posedge clk) begin : calc_y
 /*============================================================================*/
     m_intrp_dv_i <= m_intrp_dv_i & !m_intrp_dr;
+    if ( s0 ) begin // Output is not valid anymore when interpolation starts!
+        m_intrp_dv_i <= 0;
+    end
     if ( POLYNOMIAL == "LINEAR" ) begin // Conditional synthesis!
         // y(x) = ax + b
         ax <= s0;
@@ -761,6 +764,7 @@ always @(posedge clk) begin : calc_y
         end
         yx <= axxxx_bxxx_cxx_dx_e;
     end
+    attn <= 0;
     if ( yx ) begin
         m_intrp_ch <= m_intrp_ch_i;
         m_intrp_d_i[OUTW-1] <= yx_i[ASW-1]; // Assign sign
@@ -773,15 +777,15 @@ always @(posedge clk) begin : calc_y
             m_intrp_d_i[OUTW-2:0] <= ALL_ZERO;
         end
         m_intrp_dv_i <= 1;
-        if ( ATTENUATION ) begin // Conditional synthesis!
-            p_arg_1 <= {s_signal_d_i, 1'b0};
-            if ( s_signal_dv ) begin
-                p_arg_1 <= $signed( {s_signal_d_i, 1'b0} );
-            end
-            p_arg_2 <= yx_i;
-        end
         yx <= 1;
         if ( m_intrp_dr ) begin
+            if ( ATTENUATION ) begin // Conditional synthesis!
+                p_arg_1 <= {s_signal_d_i, 1'b0};
+                if ( s_signal_dv ) begin
+                    p_arg_1 <= $signed( {s_signal_d, 1'b0} );
+                end
+                p_arg_2 <= yx_i;
+            end
             yx <= 0;
             attn <= 1;
         end

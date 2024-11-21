@@ -34,29 +34,35 @@ localparam FRACTION_WIDTH = 32;
 localparam real FACTOR_6DB = 2.0 ** ( INPUT_WIDTH - 2 ); // -6dB
 localparam real FRACTION_1_0 = 2.0 ** ( FRACTION_WIDTH - 1 );
 localparam real SIGNAL_6DB = 2.0 ** ( FRACTION_WIDTH - 2 );
-localparam INW   = INPUT_WIDTH; // Input  width
-localparam OUTW  = INPUT_WIDTH; // Output width
-localparam CHW   = $clog2( NR_CHANNELS ); // Channel width
-localparam CHN   = NR_CHANNELS; // Number of channels
+localparam INW = INPUT_WIDTH; // Input  width
+localparam OUTW = INPUT_WIDTH; // Output width
+localparam CHW = $clog2( NR_CHANNELS ); // Channel width
+localparam CHN = NR_CHANNELS; // Number of channels
 localparam CNTRW = FRACTION_WIDTH; // Fraction and counter width
 
 reg clk = 0;
 reg rst_n = 0; // Synchronous reset, high when clk is stable!
 
-reg  [INW-1:0]   s_intrp1_d = 0;
-reg              s_intrp1_dv = 0;
-wire             s_intrp1_dr;
-wire             s_intrp1_nchr;
+reg  [INW-1:0] s_intrp1_d = 0;
+reg  s_intrp1_dv = 0;
+wire s_intrp1_dr;
+wire s_intrp1_nchr;
 reg  [CNTRW-1:0] fraction1 = 0; // 1.CNTRW-1 fraction value
-reg  [2:0]       select1 = 0;
+reg  [2:0] select1 = 0;
 reg  [CNTRW-1:0] s_signal1_d = SIGNAL_6DB;
 wire [OUTW-1:0]  m_intrp1_d;
-wire             m_intrp1_dv;
-reg              m_intrp1_dr = 1;
+wire m_intrp1_dv;
+reg  m_intrp1_dr = 1;
 wire [CNTRW-1:0] m_signal1_d;
-wire             overflow1;
+wire overflow1;
 
-interpolator intrp1(
+interpolator #(
+    .POLYNOMIAL( "LINEAR" ),
+    .NR_CHANNELS( 1 ),
+    .INPUT_WIDTH( INPUT_WIDTH ),
+    .FRACTION_WIDTH( FRACTION_WIDTH ),
+    .ATTENUATION( 1 ))
+intrp1(
     .clk(clk),
     .rst_n(rst_n),
     .s_intrp_d(s_intrp1_d),
@@ -74,23 +80,23 @@ interpolator intrp1(
     .m_signal_d(m_signal1_d),
     .overflow(overflow1));
 
-defparam intrp1.POLYNOMIAL = "LINEAR";
-defparam intrp1.NR_CHANNELS = 1;
-defparam intrp1.INPUT_WIDTH = INPUT_WIDTH;
-defparam intrp1.FRACTION_WIDTH = FRACTION_WIDTH;
-defparam intrp1.ATTENUATION = 1;
-
-reg  [INW-1:0]   s_intrp2_d = 0;
-reg              s_intrp2_dv = 0;
-wire             s_intrp2_dr;
+reg  [INW-1:0] s_intrp2_d = 0;
+reg  s_intrp2_dv = 0;
+wire s_intrp2_dr;
 reg  [CNTRW-1:0] fraction2; // 1.CNTRW-1 fraction value
-reg  [2:0]       select2 = 0;
-wire [OUTW-1:0]  m_intrp2_d;
-wire             m_intrp2_dv;
-reg              m_intrp2_dr = 1;
-wire             overflow2;
+reg  [2:0] select2 = 0;
+wire [OUTW-1:0] m_intrp2_d;
+wire m_intrp2_dv;
+reg  m_intrp2_dr = 1;
+wire overflow2;
 
-interpolator intrp2(
+interpolator #(
+    .POLYNOMIAL( "2ND_ORDER" ),
+    .NR_CHANNELS( 1 ),
+    .INPUT_WIDTH( INPUT_WIDTH ),
+    .FRACTION_WIDTH( FRACTION_WIDTH ),
+    .ATTENUATION( 0 ))
+intrp2(
     .clk(clk),
     .rst_n(rst_n),
     .s_intrp_d(s_intrp2_d),
@@ -104,26 +110,27 @@ interpolator intrp2(
     .m_intrp_dr(m_intrp2_dr),
     .overflow(overflow2));
 
-defparam intrp2.POLYNOMIAL = "2ND_ORDER";
-defparam intrp2.NR_CHANNELS = 1;
-defparam intrp2.INPUT_WIDTH = INPUT_WIDTH;
-defparam intrp2.FRACTION_WIDTH = FRACTION_WIDTH;
-
-wire [INW-1:0]   s_intrp_d;  // Input for intrp3/4/5/6!
-wire [CHW-1:0]   s_intrp_ch; // Input for intrp3/4/5/6!
-wire             s_intrp_dv; // Input for intrp3/4/5/6!
-wire             s_intrp3_dr;
-wire             s_intrp3_nchr;
+wire [INW-1:0] s_intrp_d;  // Input for intrp3/4/5/6!
+wire [CHW-1:0] s_intrp_ch; // Input for intrp3/4/5/6!
+wire s_intrp_dv; // Input for intrp3/4/5/6!
+wire s_intrp3_dr;
+wire s_intrp3_nchr;
 reg  [CNTRW-1:0] fraction = 0; // 1.CNTRW-1 fraction value
-reg  [2:0]       select = 0;
-wire [OUTW-1:0]  m_intrp3_d;
-wire [CHW-1:0]   m_intrp3_ch;
-wire             m_intrp3_dv;
-reg              m_intrp3_dr = 0;
-wire             m_intrp_dr; // Input for intrp4/5/6!
-wire             overflow3;
+reg  [2:0] select = 0;
+wire [OUTW-1:0] m_intrp3_d;
+wire [CHW-1:0] m_intrp3_ch;
+wire m_intrp3_dv;
+reg  m_intrp3_dr = 0;
+wire m_intrp_dr; // Input for intrp4/5/6!
+wire overflow3;
 
-interpolator intrp3(
+interpolator #(
+    .POLYNOMIAL( "3RD_ORDER" ),
+    .NR_CHANNELS( NR_CHANNELS ),
+    .INPUT_WIDTH( INPUT_WIDTH ),
+    .FRACTION_WIDTH( FRACTION_WIDTH ),
+    .ATTENUATION( 0 ))
+intrp3(
     .clk(clk),
     .rst_n(rst_n),
     .s_intrp_d(s_intrp_d),
@@ -139,17 +146,18 @@ interpolator intrp3(
     .m_intrp_dr(m_intrp3_dr),
     .overflow(overflow3));
 
-defparam intrp3.POLYNOMIAL = "3RD_ORDER";
-defparam intrp3.NR_CHANNELS = NR_CHANNELS;
-defparam intrp3.INPUT_WIDTH = INPUT_WIDTH;
-defparam intrp3.FRACTION_WIDTH = FRACTION_WIDTH;
+wire s_intrp4_dr;
+wire [OUTW-1:0] m_intrp4_d;
+wire m_intrp4_dv;
+wire overflow4;
 
-wire             s_intrp4_dr;
-wire [OUTW-1:0]  m_intrp4_d;
-wire             m_intrp4_dv;
-wire             overflow4;
-
-interpolator intrp4(
+interpolator #(
+    .POLYNOMIAL( "3RD_ORDER" ),
+    .NR_CHANNELS( 1 ),
+    .INPUT_WIDTH( INPUT_WIDTH ),
+    .FRACTION_WIDTH( FRACTION_WIDTH ),
+    .ATTENUATION( 0 ))
+intrp4(
     .clk(clk),
     .rst_n(rst_n),
     .s_intrp_d(s_intrp_d),
@@ -163,17 +171,18 @@ interpolator intrp4(
     .m_intrp_dr(m_intrp_dr),
     .overflow(overflow4));
 
-defparam intrp4.POLYNOMIAL = "3RD_ORDER";
-defparam intrp4.NR_CHANNELS = 1;
-defparam intrp4.INPUT_WIDTH = INPUT_WIDTH;
-defparam intrp4.FRACTION_WIDTH = FRACTION_WIDTH;
+wire s_intrp5_dr;
+wire [OUTW-1:0] m_intrp5_d;
+wire m_intrp5_dv;
+wire overflow5;
 
-wire             s_intrp5_dr;
-wire [OUTW-1:0]  m_intrp5_d;
-wire             m_intrp5_dv;
-wire             overflow5;
-
-interpolator intrp5(
+interpolator #(
+    .POLYNOMIAL( "4TH_ORDER" ),
+    .NR_CHANNELS( 1 ),
+    .INPUT_WIDTH( INPUT_WIDTH ),
+    .FRACTION_WIDTH( FRACTION_WIDTH ),
+    .ATTENUATION( 0 ))
+intrp5(
     .clk(clk),
     .rst_n(rst_n),
     .s_intrp_d(s_intrp_d),
@@ -187,17 +196,18 @@ interpolator intrp5(
     .m_intrp_dr(m_intrp_dr),
     .overflow(overflow5));
 
-defparam intrp5.POLYNOMIAL = "4TH_ORDER";
-defparam intrp5.NR_CHANNELS = 1;
-defparam intrp5.INPUT_WIDTH = INPUT_WIDTH;
-defparam intrp5.FRACTION_WIDTH = FRACTION_WIDTH;
+wire s_intrp6_dr;
+wire [OUTW-1:0] m_intrp6_d;
+wire m_intrp6_dv;
+wire overflow6;
 
-wire             s_intrp6_dr;
-wire [OUTW-1:0]  m_intrp6_d;
-wire             m_intrp6_dv;
-wire             overflow6;
-
-interpolator intrp6(
+interpolator #(
+    .POLYNOMIAL( "5TH_ORDER" ),
+    .NR_CHANNELS( 1 ),
+    .INPUT_WIDTH( INPUT_WIDTH ),
+    .FRACTION_WIDTH( FRACTION_WIDTH ),
+    .ATTENUATION( 0 ))
+intrp6(
     .clk(clk),
     .rst_n(rst_n),
     .s_intrp_d(s_intrp_d),

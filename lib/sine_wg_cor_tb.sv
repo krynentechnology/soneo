@@ -57,7 +57,11 @@ wire [CHANNEL_WIDTH-1:0] m_sine_ch;
 wire m_sine_dv;
 reg  m_sine_dr = 0;
 
-sine_wg_cor swg_1(
+sine_wg_cor #(
+    .NR_CHANNELS( NR_CHANNELS ),
+    .RADIAN_WIDTH( RADIAN_WIDTH ),
+    .PRECISION( PRECISION ))
+swg_1(
     .clk(clk),
     .rst_n(rst_n),
     .s_sine_d(s_sine_d),
@@ -71,10 +75,6 @@ sine_wg_cor swg_1(
     .m_sine_dv(m_sine_dv),
     .m_sine_dr(m_sine_dr)
     );
-
-defparam swg_1.NR_CHANNELS = NR_CHANNELS;
-defparam swg_1.RADIAN_WIDTH = RADIAN_WIDTH;
-defparam swg_1.PRECISION = PRECISION;
 
 localparam real MATH_PI = 3.141592653589793115997963;
 localparam real FACTOR_1_0 = 2.0 ** ( RADIAN_WIDTH - 3 );
@@ -131,8 +131,6 @@ integer i;
 initial begin : test
 /*============================================================================*/
     rst_n = 0;
-    s_sine_zero = 0;
-    s_sine_dv = 0;
     k_factor = swg_1.K_FACTOR;
     for ( i = 0; i < NR_CHANNELS; i = i + 1 ) begin
         m_sine_d_out[i] = 0;
@@ -146,6 +144,7 @@ initial begin : test
     $display( "PI/2     %8x = %0d", swg_1.PI_OVER_2, swg_1.PI_OVER_2 );
     wait ( clk ) @( negedge clk );
     rst_n = 1;
+    m_sine_dr = 1;
     set_sine_rad(( PI + 100 ), 0, 1, 1 );   // > 180 degrees!
     set_sine_rad( -( PI + 100 ), 0, 1, 1 );
     set_sine_rad( PI, 0, 1, 1 );            // 180 degrees
@@ -179,7 +178,7 @@ initial begin : test
         end
     end
     $display( "Maximum sine error (0 - 360 degrees) = %12.9f", max_angle_error );
-    $finish; 
+    $finish;
 end // test
 
 /*============================================================================*/

@@ -245,8 +245,9 @@ always @(posedge clk) begin : sine_wave_generator
             m_cosine_d_i <= -x;
         end
         m_sine_ch_i <= sine_ch_i;
-        s_sine_dr_i <= 1;
+        s_sine_dr_i <= m_sine_dr;
         m_sine_dv_i <= 1;
+        yx <= ~m_sine_dr;
     end
     if ( !rst_n ) begin
         s_sine_dr_i <= 1;
