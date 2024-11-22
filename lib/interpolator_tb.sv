@@ -302,6 +302,7 @@ begin
     end
     wait( s_intrp1_dr );
     // Exponential
+    setup_linear( FACTOR_6DB, 0, intrp1.STORE ); // Set threshold
     setup_linear( 0, 0, intrp1.STORE ); // Set PO = 0
     setup_linear( 1000, ( FRACTION_1_0 * 1.01 ), intrp1.EXPONENTIAL ); // Set N1 start value
     wait( s_intrp1_dr );
