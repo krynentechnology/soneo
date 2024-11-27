@@ -195,9 +195,9 @@ module interpolator #(
             // 3'b011 = use fraction as exponential attenuation (ATTENUATION=1,
             //          POLYNOMIAL="LINEAR", POLYNOMIAL="2ND_ORDER" )
             // 3'b111 = reset internal state
-    s_signal_d, s_signal_dv, // Signal to be attenuated when valid (_dv)
+    s_signal_d, s_signal_dv, s_signal_dr, // Signal to be attenuated when valid (_dv)
     m_intrp_d, m_intrp_ch, m_intrp_dv, m_intrp_dr, // _dv = data valid, _dr = data ready
-    m_signal_d, // Attenuated signal
+    m_signal_d, m_signal_dv, // Attenuated signal
     overflow
     );
 
@@ -240,13 +240,15 @@ output wire s_intrp_dr;
 output wire s_intrp_nchr;
 input  wire [CNTRW-1:0] fraction; // 1.CNTRW-1 fraction value
 input  wire [2:0] select;
-input  wire [CNTRW-1:0] s_signal_d;
+input  wire [INW-1:0] s_signal_d;
 input  wire s_signal_dv; // Signal to attenuate valid
+output reg  s_signal_dr = 0;
 output wire [OUTW-1:0] m_intrp_d;
 output reg  [CHW-1:0] m_intrp_ch = 0;
 output wire m_intrp_dv;
-input  wire m_intrp_dr;
-output wire [CNTRW-1:0] m_signal_d; // Valid one clock cycle after m_intrp_dv!
+input  wire m_intrp_dr; // Signal to continue interpolation when ATTENUATION=1
+output wire [OUTW-1:0] m_signal_d; // Valid one clock cycle after m_intrp_dv!
+output reg  m_signal_dv = 0;
 output wire overflow;
 /**
  * The 1.CNTRW-1 fraction (step) value represents a maximum of 2. E.g. an input
@@ -452,13 +454,18 @@ always @(posedge clk) begin : accumulate_fraction
     if ( yx ) begin
         if ( m_intrp_dr ) begin
             s2 <= 1;
-            next_x <= next_x_c;
+            if ( !exponential ) begin // Conditional synthesis!
+                next_x <= next_x_c;
+            end
         end
     end
     if ( attn && ATTENUATION ) begin
         if ( exponential ) begin
-            s1 <= ~stop_exponential; // Overrules s1 <= s2!
+            s1 <= ~stop_exponential | m_intrp_dr; // Overrules s1 <= s2!
             next_x <= stop_exponential;
+            if ( stop_exponential ) begin // Set fraction to 1.0!
+                acc_fraction[m_intrp_ch_i] <= {2'b01, {( CNTRW - 1 ){1'b0}}};
+            end
         end
     end
     if ( reset ) begin
@@ -624,13 +631,16 @@ assign overflow_cx_plus_d_r =
     ( !cx_plus_d_r[ASW-1] && |cx_plus_d_r[ASW-2:INW-1] ) |
     ( cx_plus_d_r[ASW-1] && !( &cx_plus_d_r[ASW-2:INW-1] ));
 
-reg signed [CNTRW-1:0] s_signal_d_i = 0;
-reg signed [CNTRW-1:0] m_signal_d_i = 0;
+reg signed [INW-1:0] s_signal_d_i = 0;
+reg signed [OUTW-1:0] m_signal_d_i = 0;
 
 /*============================================================================*/
 always @(posedge clk) begin : calc_y
 /*============================================================================*/
     m_intrp_dv_i <= m_intrp_dv_i & !m_intrp_dr;
+    if ( s0 && ATTENUATION ) begin
+        s_signal_dr <= 1;
+    end
     if ( s2 ) begin // Output m_intrp_ch_i might alter - see fifo!
         m_intrp_dv_i <= 0;
     end
@@ -784,9 +794,9 @@ always @(posedge clk) begin : calc_y
         yx <= 1;
         if ( m_intrp_dr ) begin
             if ( ATTENUATION ) begin // Conditional synthesis!
-                p_arg_1 <= {s_signal_d_i, 1'b0};
+                p_arg_1 <= {s_signal_d_i, {( CNTRW - INW + 1 ){1'b0}}};
                 if ( s_signal_dv ) begin
-                    p_arg_1 <= $signed( {s_signal_d, 1'b0} );
+                    p_arg_1 <= $signed( {s_signal_d, {( CNTRW - INW + 1 ){1'b0}}} );
                 end
                 p_arg_2 <= yx_i;
             end
@@ -795,20 +805,23 @@ always @(posedge clk) begin : calc_y
         end
     end
     if ( ATTENUATION ) begin // Conditional synthesis!
+        m_signal_dv <= 0;
         if ( s_signal_dv ) begin
+            s_signal_dr <= 0;
             s_signal_d_i <= $signed( s_signal_d );
         end
     end
     if ( attn && ATTENUATION ) begin // Conditional synthesis!
-        m_signal_d_i[CNTRW-1] <= product_c[PW-2];
-        m_signal_d_i[CNTRW-2:0] <= product_c[( CNTRW + INW )-3:INW-1];
+        m_signal_dv <= 1;
+        m_signal_d_i[OUTW-1] <= product_c[PW-2];
+        m_signal_d_i[OUTW-2:0] <= product_c[( CNTRW + INW )-3:CNTRW-1];
         // Check for positive overflow!
         if ( !product_c[PW-2] && |product_c[PW-3:( CNTRW + INW )-2] ) begin
-            m_signal_d_i[CNTRW-2:0] <= {( CNTRW - 1 ){1'b1}};
+            m_signal_d_i[OUTW-2:0] <= {( OUTW - 1 ){1'b1}};
         end
         // Check for negative overflow!
         if ( product_c[PW-2] && !( &product_c[PW-3:( CNTRW + INW )-2] )) begin
-            m_signal_d_i[CNTRW-2:0] <= {( CNTRW - 1 ){1'b0}};
+            m_signal_d_i[OUTW-2:0] <= {( OUTW - 1 ){1'b0}};
         end
     end
     if ( reset ) begin
@@ -833,7 +846,9 @@ always @(posedge clk) begin : calc_y
         cxx_plus_dx_plus_e_r <= 0;
         m_intrp_d_i <= 0;
         m_intrp_dv_i <= 0;
+        s_signal_dr <= 0;
         m_signal_d_i <= 0;
+        m_signal_dv <= 0;
     end
 end // calc_y
 

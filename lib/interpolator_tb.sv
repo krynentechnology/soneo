@@ -31,9 +31,8 @@ localparam NR_CHANNELS = 3;
 localparam INPUT_WIDTH = 24;
 localparam FRACTION_WIDTH = 32;
 
-localparam real FACTOR_6DB = 2.0 ** ( INPUT_WIDTH - 2 ); // -6dB
+localparam real SIGNAL_6DB = 2.0 ** ( INPUT_WIDTH - 2 ); // -6dB
 localparam real FRACTION_1_0 = 2.0 ** ( FRACTION_WIDTH - 1 );
-localparam real SIGNAL_6DB = 2.0 ** ( FRACTION_WIDTH - 2 );
 localparam INW = INPUT_WIDTH; // Input  width
 localparam OUTW = INPUT_WIDTH; // Output width
 localparam CHW = $clog2( NR_CHANNELS ); // Channel width
@@ -49,11 +48,14 @@ wire s_intrp1_dr;
 wire s_intrp1_nchr;
 reg  [CNTRW-1:0] fraction1 = 0; // 1.CNTRW-1 fraction value
 reg  [2:0] select1 = 0;
-reg  [CNTRW-1:0] s_signal1_d = SIGNAL_6DB;
+reg  [INW-1:0] s_signal1_d = SIGNAL_6DB;
+reg  s_signal1_dv = 0;
+wire s_signal1_dr;
 wire [OUTW-1:0]  m_intrp1_d;
 wire m_intrp1_dv;
 reg  m_intrp1_dr = 1;
-wire [CNTRW-1:0] m_signal1_d;
+wire [OUTW-1:0] m_signal1_d;
+wire m_signal1_dv;
 wire overflow1;
 
 interpolator #(
@@ -73,11 +75,13 @@ intrp1(
     .fraction(fraction1),
     .select(select1),
     .s_signal_d(s_signal1_d),
-    .s_signal_dv(1'b1),
+    .s_signal_dv(s_signal1_dv),
+    .s_signal_dr(s_signal1_dr),
     .m_intrp_d(m_intrp1_d),
     .m_intrp_dv(m_intrp1_dv),
     .m_intrp_dr(m_intrp1_dr),
     .m_signal_d(m_signal1_d),
+    .m_signal_dv(m_signal1_dv),
     .overflow(overflow1));
 
 reg  [INW-1:0] s_intrp2_d = 0;
@@ -253,59 +257,63 @@ integer i;
 task setup_linear_shapes;
 /*============================================================================*/
 begin
+    s_signal1_dv = 1;
     m_intrp1_dr = 1;
     // Triangle
     setup_linear( 0, 0, intrp1.STORE ); // n1 = 0
     for ( i = 0; i < 10; i = i + 1 ) begin
-        setup_linear( FACTOR_6DB, ( FRACTION_1_0 / 20.0 ), 0 );
-        setup_linear( -FACTOR_6DB, ( FRACTION_1_0 / 40.0 ), 0 );
+        setup_linear( SIGNAL_6DB, ( FRACTION_1_0 / 20.0 ), 0 );
+        setup_linear( -SIGNAL_6DB, ( FRACTION_1_0 / 40.0 ), 0 );
         setup_linear( 0, ( FRACTION_1_0 / 20.0 ), 0 );
     end
     setup_linear( 0, ( FRACTION_1_0 / 20.0 ), 0 );
     wait( s_intrp1_dr )
     // Ramp down sawtooth
     for ( i = 0; i < 10; i = i + 1 ) begin
-        setup_linear( FACTOR_6DB, 0, intrp1.STORE );
-        setup_linear( -FACTOR_6DB, 0, 0 );
+        setup_linear( SIGNAL_6DB, 0, intrp1.STORE );
+        setup_linear( -SIGNAL_6DB, 0, 0 );
     end
     setup_linear( 0, 0, intrp1.STORE ); // n1 = 0
     setup_linear( 0, ( FRACTION_1_0 / 20.0 ), 0 );
     wait( s_intrp1_dr )
     // Ramp up sawtooth
     for ( i = 0; i < 10; i = i + 1 ) begin
-        setup_linear( -FACTOR_6DB, 0, intrp1.STORE );
-        setup_linear( FACTOR_6DB, ( FRACTION_1_0 / 20.0 ), 0 );
+        setup_linear( -SIGNAL_6DB, 0, intrp1.STORE );
+        setup_linear( SIGNAL_6DB, ( FRACTION_1_0 / 20.0 ), 0 );
     end
     setup_linear( 0, 0, intrp1.STORE ); // n1 = 0
     setup_linear( 0, ( FRACTION_1_0 / 20.0 ), 0 );
     wait( s_intrp1_dr )
     // Square
     for ( i = 0; i < 10; i = i + 1 ) begin
-        setup_linear( FACTOR_6DB, 0, intrp1.STORE );
-        setup_linear( FACTOR_6DB, ( FRACTION_1_0 / 20.0 ), 0 );
-        setup_linear( -FACTOR_6DB, 0, intrp1.STORE );
-        setup_linear( -FACTOR_6DB, 0, 0 ); // Use last set fraction!
+        setup_linear( SIGNAL_6DB, 0, intrp1.STORE );
+        setup_linear( SIGNAL_6DB, ( FRACTION_1_0 / 20.0 ), 0 );
+        setup_linear( -SIGNAL_6DB, 0, intrp1.STORE );
+        setup_linear( -SIGNAL_6DB, 0, 0 ); // Use last set fraction!
     end
     setup_linear( 0, 0, intrp1.STORE ); // n1 = 0
     setup_linear( 0, ( FRACTION_1_0 / 20.0 ), 0 );
     wait( s_intrp1_dr )
     // Pulse
     for ( i = 0; i < 10; i = i + 1 ) begin
-        setup_linear( FACTOR_6DB, 0, intrp1.STORE );
-        setup_linear( FACTOR_6DB, ( FRACTION_1_0 / 2.0 ), 0 );
+        setup_linear( SIGNAL_6DB, 0, intrp1.STORE );
+        setup_linear( SIGNAL_6DB, ( FRACTION_1_0 / 2.0 ), 0 );
         setup_linear( 0, 0, intrp1.STORE ); // n1 = 0
         setup_linear( 0, ( FRACTION_1_0 / 20.0 ), 0 );
-        setup_linear( -FACTOR_6DB, 0, intrp1.STORE );
-        setup_linear( -FACTOR_6DB, ( FRACTION_1_0 / 2.0 ), 0 );
+        setup_linear( -SIGNAL_6DB, 0, intrp1.STORE );
+        setup_linear( -SIGNAL_6DB, ( FRACTION_1_0 / 2.0 ), 0 );
         setup_linear( 0, 0, intrp1.STORE ); // n1 = 0
         setup_linear( 0, ( FRACTION_1_0 / 20.0 ), 0 );
     end
     wait( s_intrp1_dr );
     // Exponential
-    setup_linear( FACTOR_6DB, 0, intrp1.STORE ); // Set threshold
+    setup_linear( SIGNAL_6DB, 0, intrp1.STORE ); // Set threshold
     setup_linear( 0, 0, intrp1.STORE ); // Set PO = 0
     setup_linear( 1000, ( FRACTION_1_0 * 1.01 ), intrp1.EXPONENTIAL ); // Set N1 start value
     wait( s_intrp1_dr );
+    #500 // Interpolation and attenuation continue while m_intrp1_dr = 1!
+    s_signal1_dv = 0;
+    m_intrp1_dr = 0;
 end
 endtask // setup_linear_shapes
 
@@ -336,13 +344,13 @@ begin
     // Circle
     setup_quadratic( 0, 0, 1, 0 ); // n2 = 0
     for ( j = 0; j < 5; j = j + 1 ) begin
-         // p1 = 0, p0 = 0/-FACTOR_6DB, n1 = 0, n2 = FACTOR_6DB
-        setup_quadratic( FACTOR_6DB, 0, 0, 0 );
-         // p1 = 0, p0 = 0, n1 = FACTOR_6DB, n2 = 0
+         // p1 = 0, p0 = 0/-SIGNAL_6DB, n1 = 0, n2 = SIGNAL_6DB
+        setup_quadratic( SIGNAL_6DB, 0, 0, 0 );
+         // p1 = 0, p0 = 0, n1 = SIGNAL_6DB, n2 = 0
         setup_quadratic( 0, ( FRACTION_1_0 / 20.0 ), 0, 1 ); // Select "head"
-         // p1 = 0, p0 = FACTOR_6DB, n1 = 0, n2 = -FACTOR_6DB
-        setup_quadratic( -FACTOR_6DB, 0, 0, 0 );
-         // p1 = FACTOR_6DB, p0 = 0, n1 = -FACTOR_6DB, n2 = 0
+         // p1 = 0, p0 = SIGNAL_6DB, n1 = 0, n2 = -SIGNAL_6DB
+        setup_quadratic( -SIGNAL_6DB, 0, 0, 0 );
+         // p1 = SIGNAL_6DB, p0 = 0, n1 = -SIGNAL_6DB, n2 = 0
         setup_quadratic( 0, 0, 0, 1 ); // Select "head"
     end
     setup_quadratic( 0, 0, 0, 0 );
@@ -351,17 +359,17 @@ begin
     wait( s_intrp2_dr );
     // Parabola
     for ( j = 0; j < 5; j = j + 1 ) begin
-        setup_quadratic( FACTOR_6DB, 0, 1, 0 ); // n2 = FACTOR_6DB
-         // p1 = 0, p0 = 0, n1 = FACTOR_6DB, n2 = FACTOR_6DB
-        setup_quadratic( FACTOR_6DB, ( FRACTION_1_0 / 20.0 ), 0, 1 ); // Select "head"
+        setup_quadratic( SIGNAL_6DB, 0, 1, 0 ); // n2 = SIGNAL_6DB
+         // p1 = 0, p0 = 0, n1 = SIGNAL_6DB, n2 = SIGNAL_6DB
+        setup_quadratic( SIGNAL_6DB, ( FRACTION_1_0 / 20.0 ), 0, 1 ); // Select "head"
         setup_quadratic( 0, 0, 1, 0 ); // n2 = 0
-         // p1 = FACTOR_6DB, p0 = FACTOR_6DB, n1 = 0, n2 = 0,
+         // p1 = SIGNAL_6DB, p0 = SIGNAL_6DB, n1 = 0, n2 = 0,
         setup_quadratic( 0, 0, 0, 0 );
-        setup_quadratic( -FACTOR_6DB, 0, 1, 0 ); // n2 = -FACTOR_6DB
-         // p1 = FACTOR_6DB, p0 = 0, n1 = -FACTOR_6DB, n2 = -FACTOR_6DB
-        setup_quadratic( -FACTOR_6DB, 0, 0, 1 ); // Select "head"
+        setup_quadratic( -SIGNAL_6DB, 0, 1, 0 ); // n2 = -SIGNAL_6DB
+         // p1 = SIGNAL_6DB, p0 = 0, n1 = -SIGNAL_6DB, n2 = -SIGNAL_6DB
+        setup_quadratic( -SIGNAL_6DB, 0, 0, 1 ); // Select "head"
         setup_quadratic( 0, 0, 1, 0 ); // n2 = 0
-         // p1 = -FACTOR_6DB, p0 = -FACTOR_6DB, n1 = 0, n2 = 0
+         // p1 = -SIGNAL_6DB, p0 = -SIGNAL_6DB, n1 = 0, n2 = 0
         setup_quadratic( 0, 0, 0, 0 );
     end
     setup_quadratic( 0, 0, 1, 0 );
@@ -370,23 +378,23 @@ begin
     wait( s_intrp2_dr );
     // Circular spike
     for ( j = 0; j < 5; j = j + 1 ) begin
-        setup_quadratic( FACTOR_6DB, 0, 1, 0 ); // n2 = FACTOR_6DB
+        setup_quadratic( SIGNAL_6DB, 0, 1, 0 ); // n2 = SIGNAL_6DB
         setup_quadratic( 0, 0, 1, 0 ); // n2 = 0
-        setup_quadratic( FACTOR_6DB, 0, 1, 0 ); // n2 = FACTOR_6DB
-         // p1 = FACTOR_6DB, p0 = 0, n1 = FACTOR_6DB, n2 = 0
+        setup_quadratic( SIGNAL_6DB, 0, 1, 0 ); // n2 = SIGNAL_6DB
+         // p1 = SIGNAL_6DB, p0 = 0, n1 = SIGNAL_6DB, n2 = 0
         setup_quadratic( 0, ( FRACTION_1_0 / 20.0 ), 0, 0 );
-         // p1 = 0, p0 = FACTOR_6DB, n1 = 0, n2 = FACTOR_6DB
-        setup_quadratic( FACTOR_6DB, 0, 0, 1 ); // Select "head"
+         // p1 = 0, p0 = SIGNAL_6DB, n1 = 0, n2 = SIGNAL_6DB
+        setup_quadratic( SIGNAL_6DB, 0, 0, 1 ); // Select "head"
         setup_quadratic( 0, 0, 1, 0 ); // n2 = 0
-        setup_quadratic( -FACTOR_6DB, 0, 1, 0 ); // n2 = -FACTOR_6DB
+        setup_quadratic( -SIGNAL_6DB, 0, 1, 0 ); // n2 = -SIGNAL_6DB
         setup_quadratic( 0, 0, 1, 0 ); // n2 = 0
-        setup_quadratic( -FACTOR_6DB, 0, 1, 0 ); // n2 = -FACTOR_6DB
-         // p1 = -FACTOR_6DB, p0 = 0, n1 = -FACTOR_6DB, n2 = 0
+        setup_quadratic( -SIGNAL_6DB, 0, 1, 0 ); // n2 = -SIGNAL_6DB
+         // p1 = -SIGNAL_6DB, p0 = 0, n1 = -SIGNAL_6DB, n2 = 0
         setup_quadratic( 0, 0, 0, 0 );
-        setup_quadratic( -FACTOR_6DB, 0, 1, 0 ); // n2 = -FACTOR_6DB
+        setup_quadratic( -SIGNAL_6DB, 0, 1, 0 ); // n2 = -SIGNAL_6DB
         setup_quadratic( 0, 0, 1, 0 ); // n2 = 0
-         // p1 = 0, p0 = -FACTOR_6DB, n1 = 0, n2 = -FACTOR_6DB
-        setup_quadratic( -FACTOR_6DB, 0, 0, 1 ); // Select "head"
+         // p1 = 0, p0 = -SIGNAL_6DB, n1 = 0, n2 = -SIGNAL_6DB
+        setup_quadratic( -SIGNAL_6DB, 0, 0, 1 ); // Select "head"
         setup_quadratic( 0, 0, 1, 0 ); // n2 = 0
     end
     setup_quadratic( 0, 0, 1, 0 );
@@ -396,15 +404,15 @@ begin
     // Parabolic spike
     setup_quadratic( 0, 0, 1, 0 ); // n2 = 0
     for ( j = 0; j < 5; j = j + 1 ) begin
-        setup_quadratic( FACTOR_6DB, 0, 1, 0 ); // n2 = FACTOR_6DB
-         // p1 = 0, p0 = 0/-FACTOR_6DB, n1 = FACTOR_6DB, n2 = 0
+        setup_quadratic( SIGNAL_6DB, 0, 1, 0 ); // n2 = SIGNAL_6DB
+         // p1 = 0, p0 = 0/-SIGNAL_6DB, n1 = SIGNAL_6DB, n2 = 0
         setup_quadratic( 0, ( FRACTION_1_0 / 20.0 ), 0, 0 );
-         // p1 = 0, p0 = FACTOR_6DB, n1 = 0, n2 = 0
+         // p1 = 0, p0 = SIGNAL_6DB, n1 = 0, n2 = 0
         setup_quadratic( 0, 0, 0, 1 ); // Select "head"
-        setup_quadratic( -FACTOR_6DB, 0, 1, 0 ); // n2 = -FACTOR_6DB
-         // p1 = 0, p0 = 0, n1 = -FACTOR_6DB, n2 = 0
+        setup_quadratic( -SIGNAL_6DB, 0, 1, 0 ); // n2 = -SIGNAL_6DB
+         // p1 = 0, p0 = 0, n1 = -SIGNAL_6DB, n2 = 0
         setup_quadratic( 0, 0, 0, 0 );
-         // p1 = 0, p0 = -FACTOR_6DB, n1 = 0, n2 = 0
+         // p1 = 0, p0 = -SIGNAL_6DB, n1 = 0, n2 = 0
         setup_quadratic( 0, 0, 0, 1 ); // Select "head"
     end
     setup_quadratic( 0, 0, 1, 0 );
