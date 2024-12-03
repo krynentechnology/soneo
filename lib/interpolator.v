@@ -507,7 +507,6 @@ always @(posedge clk) begin : accumulate_fraction
             acc_fraction[i] = 0;
             exp_threshold[i] = 0;
         end
-        s_intrp_dr_i = {(CHN){1'b1}};
     end
 end // accumulate_fraction
 
