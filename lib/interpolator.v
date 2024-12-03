@@ -293,26 +293,18 @@ wire signed [INW-1:0] n1_c;
 reg  signed [INW-1:0] n2 [0:CHN-1];
 wire signed [INW-1:0] n2_c;
 
-// Booleans
-reg s0 = 0;
-reg s1 = 0;
-reg s2 = 0;
-reg next_x = 0;
-reg head = 0;
-
-// Boolean (one hot) states
-reg yx = 0;
-reg attn = 0;
-
-reg [CHN-1:0] s_intrp_dr_i = {(CHN){1'b1}};
+reg  [CHN-1:0] s_intrp_dr_i = {(CHN){1'b1}};
+reg  s_intrp_dr_ii = 1;
 wire s_intrp_dr_c;
-assign s_intrp_dr_c = s_intrp_dr_i[s_intrp_ch];
-reg [CHW-1:0] m_intrp_ch_i = 0;
-reg signed [OUTW-1:0] m_intrp_d_i = 0;
+assign s_intrp_dr_c = s_intrp_dr_i[s_intrp_ch] & s_intrp_dr_ii;
 
+reg signed [OUTW-1:0] m_intrp_d_i = 0;
+reg [CHW-1:0] m_intrp_ch_i = 0;
 reg m_intrp_dv_i = 0;
-wire chs_intrp_dv; // Channel select valid
-assign chs_intrp_dv = s_intrp_dv && s_intrp_dr_c && ( s_intrp_ch < NR_CHANNELS );
+
+// Booleans
+reg head = 0;
+reg attn = 0;
 
 wire [CHW-1:0] intrp_ch;
 assign intrp_ch = s_intrp_dr_c ? s_intrp_ch : m_intrp_ch_i;
@@ -322,25 +314,20 @@ assign p0_c = p0[ intrp_ch ];
 assign n1_c = n1[ intrp_ch ];
 assign n2_c = n2[ intrp_ch ];
 
+wire chs_intrp_dv; // Channel select valid
+assign chs_intrp_dv = s_intrp_dv && s_intrp_dr_c && ( s_intrp_ch < NR_CHANNELS );
+
 wire exponential;
 assign exponential = ATTENUATION && (( POLYNOMIAL == "LINEAR" ) ||
     ( POLYNOMIAL == "2ND_ORDER" )) && !head && ( EXPONENTIAL == select );
-assign s_intrp_nchr = yx & m_intrp_dr; // Set next channel already if required!
 wire reset;
 assign reset = !rst_n || ( RESET == select );
 
+integer i = 0;
 /*============================================================================*/
 always @(posedge clk) begin : fifo
 /*============================================================================*/
-    if ( next_x ) begin
-        s_intrp_dr_i[m_intrp_ch_i] <= 1;
-    end
-    if ( s2 ) begin // Get different channel for next interpolation if required!
-        m_intrp_ch_i <= s_intrp_ch;
-    end
     if ( chs_intrp_dv ) begin
-        s_intrp_dr_i[s_intrp_ch] <= 0;
-        m_intrp_ch_i <= s_intrp_ch;
         if ( POLYNOMIAL == "LINEAR" ) begin // Conditional synthesis!
             { p0[ intrp_ch ], n1[ intrp_ch ] } <= { n1_c, s_intrp_d };
         end
@@ -369,8 +356,13 @@ always @(posedge clk) begin : fifo
             n1[ intrp_ch ] <= m_intrp_d_i;
     end
     if ( reset ) begin
-        s_intrp_dr_i <= {(CHN){1'b1}};
-        m_intrp_ch_i <= 0;
+        for ( i = 0; i < CHN; i = i + 1 ) begin
+            p2[i] = 0;
+            p1[i] = 0;
+            p0[i] = 0;
+            n1[i] = 0;
+            n2[i] = 0;
+        end
         head <= 0;
     end
 end // fifo
@@ -381,17 +373,8 @@ reg [CNTRW-1:0] step[0:CHN-1];
 reg [CNTRW-1:0] step_i = 0;
 reg [CNTRW:0] acc_fraction[0:CHN-1];
 reg [CNTRW:0] acc_fraction_i = 0;
-wire [CNTRW:0] acc_fraction_c;
-assign acc_fraction_c = acc_fraction_i + { 1'b0, step_i };
-wire next_x_c;
-assign next_x_c = |acc_fraction_c[CNTRW:CNTRW-1];
 reg signed [INW-1:0] exp_threshold [0:CHN-1];
-wire stop_exponential;
-assign stop_exponential = ( fraction[CNTRW-1] && !exp_threshold[intrp_ch][INW-1] ) ?
-    ( $signed( m_intrp_d_i ) > exp_threshold[intrp_ch] ) : // Ramp up!
-    ( $signed( m_intrp_d_i ) < exp_threshold[intrp_ch] ); // Ramp down!
 
-integer i = 0;
 /*============================================================================*/
 initial begin
 /*============================================================================*/
@@ -408,29 +391,54 @@ initial begin
     s_intrp_dr_i = {(CHN){1'b1}};
 end
 
+// Booleans
+reg s0 = 0;
+reg s1 = 0;
+reg s2 = 0;
+reg s3 = 0;
+reg s0_i = 0;
+reg next_x = 0;
+reg next_x_i = 0;
+reg yx = 0;
+
+assign s_intrp_nchr = s0 & ( NR_CHANNELS > 1 ); // Set next channel already if required!
+wire [CNTRW:0] acc_fraction_c;
+assign acc_fraction_c = acc_fraction_i + { 1'b0, step_i };
+wire next_x_c;
+assign next_x_c = |acc_fraction_c[CNTRW:CNTRW-1];
+wire stop_exponential;
+assign stop_exponential = ( fraction[CNTRW-1] && !exp_threshold[intrp_ch][INW-1] ) ?
+    ( $signed( m_intrp_d_i ) > exp_threshold[intrp_ch] ) : // Ramp up!
+    ( $signed( m_intrp_d_i ) < exp_threshold[intrp_ch] ); // Ramp down!
+
 /*============================================================================*/
 always @(posedge clk) begin : accumulate_fraction
 /*============================================================================*/
-    s2 <= 0;
-    s1 <= s2; // Two clock cycles delay for same s0/yx timing as input
-    s0 <= s1; // s1 timing matches chs_intrp_dv!
-    next_x <= 0;
-    if ( s0 ) begin // Store channel step and acc_fraction
-        step[m_intrp_ch_i] <= step_i;
-        acc_fraction[m_intrp_ch_i] <= { 2'b0, acc_fraction_c[CNTRW-2:0]};
-        if ( exponential ) begin // Conditional synthesis!
-            acc_fraction[m_intrp_ch_i] <= acc_fraction_c;
-        end
+    s3 <= 0;
+    s2 <= s3;
+    s1 <= s2;
+    // s_intrp_dr_c indicates next sample for actual channel s_intrp_ch!
+    s0 <= s1 & ( ~s_intrp_dr_c | s0_i );
+    next_x_i <= 0; // To match s2/s3 timing
+    next_x <= next_x_i;
+    if ( next_x ) begin
+        s_intrp_dr_i[m_intrp_ch_i] <= 1;
     end
-    if ( s1 ) begin // Restore (updated) channel step and acc_fraction
-        step_i <= step[m_intrp_ch_i];
-        acc_fraction_i <= acc_fraction[m_intrp_ch_i];
+    if ( s3 ) begin
+        s0_i <= 1; // Continue interpolation!
+        s_intrp_dr_ii <= 1;
     end
-    if ( chs_intrp_dv ) begin // Overrules s1 step and acc_fraction!
-        s0 <= ~next_x;
+    if ( s2 ) begin // Get different channel for next interpolation if required!
+        m_intrp_ch_i <= s_intrp_ch;
+    end
+    if ( chs_intrp_dv ) begin
+        s_intrp_dr_i[s_intrp_ch] <= 0;
+        m_intrp_ch_i <= s_intrp_ch;
+        s0 <= 1;
+        s_intrp_dr_ii <= 0;
+        acc_fraction_i <= 0;
         if ( fraction != 0 ) begin // Ignore fraction when zero!
             step_i <= fraction;
-            acc_fraction_i <= 0;
             if ( exponential ) begin // Conditional synthesis!
                 s0 <= 1;
                 step_i <= 0;
@@ -449,20 +457,33 @@ always @(posedge clk) begin : accumulate_fraction
         else if (( STORE == select ) || ( 0 == step_i )) begin
             s0 <= 0; // Fraction step has no value yet!
             next_x <= 1;
+            s_intrp_dr_ii <= 1;
+        end
+    end else if ( s1 ) begin // Restore (updated) channel step and acc_fraction
+        s_intrp_dr_ii <= s_intrp_dr_c;
+        step_i <= step[m_intrp_ch_i];
+        acc_fraction_i <= acc_fraction[m_intrp_ch_i];
+    end
+    // chs_intrp_dv -> s0 and s1 -> s0
+    if ( s0 ) begin // Store channel step and acc_fraction
+        s0_i <= 0; // Reset continuation interpolation!
+        step[m_intrp_ch_i] <= step_i;
+        acc_fraction[m_intrp_ch_i] <= { 2'b0, acc_fraction_c[CNTRW-2:0]};
+        if ( exponential ) begin // Conditional synthesis!
+            acc_fraction[m_intrp_ch_i] <= acc_fraction_c;
         end
     end
-    if ( yx ) begin
+    if ( yx && !exponential ) begin // Conditional synthesis!
         if ( m_intrp_dr ) begin
             s2 <= 1;
-            if ( !exponential ) begin // Conditional synthesis!
-                next_x <= next_x_c;
-            end
+            next_x <= next_x_c;
+            s_intrp_dr_ii <= 1;
         end
     end
-    if ( attn && ATTENUATION ) begin
+    if ( attn && ATTENUATION ) begin // Conditional synthesis!
         if ( exponential ) begin
-            s1 <= ~stop_exponential | m_intrp_dr; // Overrules s1 <= s2!
-            next_x <= stop_exponential;
+            s3 <= ~stop_exponential | m_intrp_dr;
+            next_x_i <= stop_exponential;
             if ( stop_exponential ) begin // Set fraction to 1.0!
                 acc_fraction[m_intrp_ch_i] <= {2'b01, {( CNTRW - 1 ){1'b0}}};
             end
@@ -472,9 +493,21 @@ always @(posedge clk) begin : accumulate_fraction
         s0 <= 0;
         s1 <= 0;
         s2 <= 0;
+        s3 <= 0;
+        s0_i <= 0;
         next_x <= 0;
+        next_x_i <= 0;
         step_i <= 0;
         acc_fraction_i <= 0;
+        s_intrp_dr_i <= {(CHN){1'b1}};
+        s_intrp_dr_ii <= 1;
+        m_intrp_ch_i <= 0;
+        for ( i = 0; i < CHN; i = i + 1 ) begin // Initialize data memory
+            step[i] = 0;
+            acc_fraction[i] = 0;
+            exp_threshold[i] = 0;
+        end
+        s_intrp_dr_i = {(CHN){1'b1}};
     end
 end // accumulate_fraction
 
@@ -647,7 +680,7 @@ always @(posedge clk) begin : calc_y
     if ( POLYNOMIAL == "LINEAR" ) begin // Conditional synthesis!
         // y(x) = ax + b
         ax <= s0;
-        if ( ax ) begin
+        if ( ax && !s0 ) begin
             p_arg_1 <= x0_1;
             p_arg_2 <= n1_minus_p0;
         end
@@ -656,7 +689,7 @@ always @(posedge clk) begin : calc_y
     if ( POLYNOMIAL == "2ND_ORDER" ) begin // Conditional synthesis!
         // y(x) = x(ax + b) + c
         ax <= s0;
-        if ( ax ) begin
+        if ( ax && !s0 ) begin
             p_arg_1 <= x0_1;
             p_arg_2 <= a;
         end
@@ -670,7 +703,7 @@ always @(posedge clk) begin : calc_y
     if ( POLYNOMIAL == "3RD_ORDER" ) begin // Conditional synthesis!
         // y(x) = x(x(ax + b) + c) + d
         ax_x_6 <= s0;
-        if ( ax_x_6 ) begin
+        if ( ax_x_6 && !s0 ) begin
             p_arg_1 <= x0_1;
             p_arg_2 <= a_x_6;
         end
@@ -706,7 +739,7 @@ always @(posedge clk) begin : calc_y
     if ( POLYNOMIAL == "4TH_ORDER" ) begin // Conditional synthesis!
         // y(x) = x(x(x(ax + b) + c) + d) + e
         ax_x_24 <= s0;
-        if ( ax_x_24) begin
+        if ( ax_x_24 && !s0 ) begin
             p_arg_1 <= x0_1;
             p_arg_2 <= a_x_24;
         end
@@ -752,7 +785,7 @@ always @(posedge clk) begin : calc_y
     if ( POLYNOMIAL == "5TH_ORDER" ) begin // Conditional synthesis!
         // y(x) = x(x(x(x(ax + b) + c) + d) + e) + f  // 5th order polynomial
         ax <= s0;
-        if ( ax ) begin
+        if ( ax && !s0 ) begin
             p_arg_1 <= x0_1;
             p_arg_2 <= a;
         end

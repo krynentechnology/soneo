@@ -241,14 +241,15 @@ task setup_linear( input [INPUT_WIDTH-1:0] data,
                    input [2:0] select );
 /*============================================================================*/
 begin
-    wait( s_intrp1_dr )
+    wait( s_intrp1_dr );
     s_intrp1_d = data;
     fraction1 = fraction;
     select1 = select;
-    wait ( clk ) @( negedge clk )
+    wait ( clk ) @( negedge clk );
     s_intrp1_dv = 1;
-    wait ( clk ) @( negedge clk )
+    wait ( clk ) @( negedge clk );
     s_intrp1_dv = 0;
+    wait( !s_intrp1_dr );
 end
 endtask // setup_linear
 
@@ -324,14 +325,15 @@ task setup_quadratic( input [INPUT_WIDTH-1:0] data,
                       input [0:0] head );
 /*============================================================================*/
 begin
-    wait( s_intrp2_dr )
+    wait( s_intrp2_dr );
     s_intrp2_d = data;
     fraction2 = fraction;
     select2 = {head, store};
-    wait ( clk ) @( negedge clk )
+    wait ( clk ) @( negedge clk );
     s_intrp2_dv = 1;
-    wait ( clk ) @( negedge clk )
+    wait ( clk ) @( negedge clk );
     s_intrp2_dv = 0;
+    wait( !s_intrp2_dr );
 end
 endtask // setup_quadratic
 
@@ -422,11 +424,12 @@ begin
 end
 endtask // setup_quadratic_shapes
 
-reg sg_enabled; // Sine generator
-reg swg_enabled; // Sweep generator
-reg mute;
-reg pos_minus_6dB; // To test continuous DC -6dB positive value
-reg neg_minus_6dB; // To test continuous DC -6dB negative value
+reg sg_enabled = 0; // Sine generator
+reg swg_enabled = 0; // Sweep generator
+reg swg_dv = 0;
+reg mute = 0;
+reg pos_minus_6dB = 0; // To test continuous DC -6dB positive value
+reg neg_minus_6dB = 0; // To test continuous DC -6dB negative value
 
 /*============================================================================*/
 initial begin
@@ -454,8 +457,10 @@ initial begin
         setup_quadratic_shapes;
     join
     select = intrp3.RESET;
+    swg_dv = 1; // Use swg_dv for reset!
     wait ( clk ) @( negedge clk );
     select = 0;
+    swg_dv = 0;
     wait ( clk ) @( negedge clk );
     #100 // 0.1us
     $display( "Sine generator enabled" );
@@ -480,15 +485,20 @@ initial begin
     wait ( !s_intrp3_dr ) @( negedge s_intrp3_dr );
     neg_minus_6dB = 0;
     #100000 // 100us
+    wait ( clk ) @( negedge clk );
     mute = 1;
     $display( "Mute" );
     #5000 // 5us
+    wait ( clk ) @( negedge clk );
     m_intrp3_dr = 0;
     sg_enabled = 0;
     mute = 0;
+    #100 // 0.1us
     select = intrp3.RESET;
+    swg_dv = 1;
     wait ( clk ) @( negedge clk );
     select = 0;
+    swg_dv = 0;
     wait ( clk ) @( negedge clk );
     #100 // 0.1us
     $display( "Sweep generator enabled" );
@@ -542,7 +552,7 @@ always @(posedge clk) begin : collect_intrp_data
         end
     end
     else if ( swg_enabled ) begin
-        if ( s_intrp_dv & s_intrp4_dr ) begin
+        if ( s_intrp_dv ) begin
             data_intrp_in_2 <= s_intrp_d;
         end
         if ( m_intrp4_dv ) begin
@@ -583,7 +593,7 @@ end
 always @(posedge clk) begin : sine_generator
 /*============================================================================*/
     if ( sg_enabled ) begin
-        sg_dv <= sg_dv & s_intrp3_dr;
+        sg_dv <= 0;
         if ( s_intrp3_dr ) begin
             if ( pos_minus_6dB ) begin
                 sg_d <= 0;
@@ -600,10 +610,11 @@ always @(posedge clk) begin : sine_generator
             end
             sg_dv <= 1;
         end
-        else if ( s_intrp3_nchr ) begin
-            sg_ch <= sg_ch + 1;
+        if ( s_intrp3_nchr ) begin
             if (( NR_CHANNELS - 1 ) == sg_ch ) begin
                 sg_ch <= 0;
+            end else begin
+                sg_ch <= sg_ch + 1;
             end
         end
     end
@@ -613,6 +624,7 @@ always @(posedge clk) begin : sine_generator
         sine_counter[2] <= 0;
         sg_d <= 0;
         sg_dv <= 0;
+        sg_ch <= 0;
         sg_ch <= 0;
     end
 end // sine_generator
@@ -628,15 +640,14 @@ real swg_phase = 0;
 reg [$clog2( NR_STEPS )-1:0] swg_step = 0;
 reg signed [INPUT_WIDTH-1:0] swg_d = 0;
 reg signed [INPUT_WIDTH-1:0] swg_d_c;
-reg swg_dv = 0;
 
 /*============================================================================*/
 always @(posedge clk) begin : sweep_generator
 /*============================================================================*/
     if ( swg_enabled ) begin
         if ( swg_step < NR_STEPS ) begin
-            swg_dv <= swg_dv & s_intrp4_dr & s_intrp5_dr & s_intrp6_dr;
-            if ( s_intrp4_dr & s_intrp5_dr & s_intrp6_dr ) begin
+            swg_dv <= 0;
+            if ( !swg_dv && s_intrp4_dr && s_intrp5_dr && s_intrp6_dr ) begin
                 swg_delta = swg_step / $itor( NR_STEPS );
                 swg_t = F_INTERVAL * swg_delta;
                 swg_phase = MATH_2_PI * swg_t * ( F_START + (( F_END - F_START ) * swg_delta / 2 ));
