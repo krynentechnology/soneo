@@ -357,11 +357,11 @@ always @(posedge clk) begin : fifo
     end
     if ( reset ) begin
         for ( i = 0; i < CHN; i = i + 1 ) begin
-            p2[i] = 0;
-            p1[i] = 0;
-            p0[i] = 0;
-            n1[i] = 0;
-            n2[i] = 0;
+            p2[i] <= 0;
+            p1[i] <= 0;
+            p0[i] <= 0;
+            n1[i] <= 0;
+            n2[i] <= 0;
         end
         head <= 0;
     end
