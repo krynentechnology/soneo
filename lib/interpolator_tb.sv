@@ -79,7 +79,7 @@ intrp1(
     .s_signal_dr(s_signal1_dr),
     .m_intrp_d(m_intrp1_d),
     .m_intrp_dv(m_intrp1_dv),
-    .m_intrp_dr(m_intrp1_dr),
+    .m_intrp_dr(m_intrp1_dv & m_intrp1_dr),
     .m_signal_d(m_signal1_d),
     .m_signal_dv(m_signal1_dv),
     .overflow(overflow1));
@@ -250,6 +250,16 @@ begin
     wait ( clk ) @( negedge clk );
     s_intrp1_dv = 0;
     wait( !s_intrp1_dr );
+    m_intrp1_dr = 1;
+    if (( fraction != 0 ) && ( 0 == select ) && intrp1.ATTENUATION ) begin
+        // Interpolation with ATTENUATION starts!
+        wait( s_intrp1_dr );
+        wait( !s_intrp1_dr );
+        wait( m_intrp1_dv );
+        wait ( clk ) @( posedge clk );
+        m_intrp1_dr = 0; // Discontinue attenuation
+        wait( s_intrp1_dr );
+    end
 end
 endtask // setup_linear
 
@@ -259,7 +269,6 @@ task setup_linear_shapes;
 /*============================================================================*/
 begin
     s_signal1_dv = 1;
-    m_intrp1_dr = 1;
     // Triangle
     setup_linear( 0, 0, intrp1.STORE ); // n1 = 0
     for ( i = 0; i < 10; i = i + 1 ) begin
@@ -267,16 +276,13 @@ begin
         setup_linear( -SIGNAL_6DB, ( FRACTION_1_0 / 40.0 ), 0 );
         setup_linear( 0, ( FRACTION_1_0 / 20.0 ), 0 );
     end
-    setup_linear( 0, ( FRACTION_1_0 / 20.0 ), 0 );
-    wait( s_intrp1_dr )
     // Ramp down sawtooth
     for ( i = 0; i < 10; i = i + 1 ) begin
         setup_linear( SIGNAL_6DB, 0, intrp1.STORE );
-        setup_linear( -SIGNAL_6DB, 0, 0 );
+        setup_linear( -SIGNAL_6DB, ( FRACTION_1_0 / 20.0 ), 0 );
     end
     setup_linear( 0, 0, intrp1.STORE ); // n1 = 0
     setup_linear( 0, ( FRACTION_1_0 / 20.0 ), 0 );
-    wait( s_intrp1_dr )
     // Ramp up sawtooth
     for ( i = 0; i < 10; i = i + 1 ) begin
         setup_linear( -SIGNAL_6DB, 0, intrp1.STORE );
@@ -284,17 +290,15 @@ begin
     end
     setup_linear( 0, 0, intrp1.STORE ); // n1 = 0
     setup_linear( 0, ( FRACTION_1_0 / 20.0 ), 0 );
-    wait( s_intrp1_dr )
     // Square
     for ( i = 0; i < 10; i = i + 1 ) begin
         setup_linear( SIGNAL_6DB, 0, intrp1.STORE );
         setup_linear( SIGNAL_6DB, ( FRACTION_1_0 / 20.0 ), 0 );
         setup_linear( -SIGNAL_6DB, 0, intrp1.STORE );
-        setup_linear( -SIGNAL_6DB, 0, 0 ); // Use last set fraction!
+        setup_linear( -SIGNAL_6DB, ( FRACTION_1_0 / 20.0 ), 0 );
     end
     setup_linear( 0, 0, intrp1.STORE ); // n1 = 0
     setup_linear( 0, ( FRACTION_1_0 / 20.0 ), 0 );
-    wait( s_intrp1_dr )
     // Pulse
     for ( i = 0; i < 10; i = i + 1 ) begin
         setup_linear( SIGNAL_6DB, 0, intrp1.STORE );
@@ -306,15 +310,19 @@ begin
         setup_linear( 0, 0, intrp1.STORE ); // n1 = 0
         setup_linear( 0, ( FRACTION_1_0 / 20.0 ), 0 );
     end
-    wait( s_intrp1_dr );
     // Exponential
     setup_linear( SIGNAL_6DB, 0, intrp1.STORE ); // Set threshold
     setup_linear( 0, 0, intrp1.STORE ); // Set PO = 0
     setup_linear( 1000, ( FRACTION_1_0 * 1.01 ), intrp1.EXPONENTIAL ); // Set N1 start value
+    // Interpolation with ATTENUATION starts!
     wait( s_intrp1_dr );
+    wait( !s_intrp1_dr );
     #500 // Interpolation and attenuation continue while m_intrp1_dr = 1!
+    wait( m_intrp1_dv );
+    wait ( clk ) @( posedge clk );
+    m_intrp1_dr = 0; // Discontinue attenuation
+    wait( s_intrp1_dr );
     s_signal1_dv = 0;
-    m_intrp1_dr = 0;
 end
 endtask // setup_linear_shapes
 

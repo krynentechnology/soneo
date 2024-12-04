@@ -169,8 +169,8 @@
  *  The linear and quadratic interpolation could be used for wave generation of
  *  shapes like triangle, ramp up/down sawtooth, square (with variable duty
  *  cycle - pulse), circular/parabolic shapes and spikes etc. The interpolated
- *  output could also be used for amplitude (volume) control e.g. fade in/out,
- *  ATTENUATION = 1.
+ *  output could also be used for amplitude (volume) control e.g. fade in/out;
+ *  ATTENUATION = 1 for first and second order polynomials.
  **/
 
 `resetall
@@ -272,6 +272,12 @@ initial begin : param_check
         $display( "Select one of the interpolation implementations!" );
         $finish;
     end
+    if ( ATTENUATION &&
+         POLYNOMIAL != "LINEAR" &&
+         POLYNOMIAL != "2ND_ORDER" ) begin
+        $display( "ATTENUATION is not valid for set interpolation!" );
+        $finish;
+    end
     if ( NR_CHANNELS > (( 2 ** MAX_CLOG2_WIDTH ) - 1 )) begin
         $display( "NR_CHANNELS > (( 2 ** MAX_CLOG2_WIDTH ) - 1 )!" );
         $finish;
@@ -303,7 +309,8 @@ reg [CHW-1:0] m_intrp_ch_i = 0;
 reg m_intrp_dv_i = 0;
 
 // Booleans
-reg head = 0;
+reg head[0:CHN-1];
+reg exponential[0:CHN-1];
 reg attn = 0;
 
 wire [CHW-1:0] intrp_ch;
@@ -316,10 +323,6 @@ assign n2_c = n2[ intrp_ch ];
 
 wire chs_intrp_dv; // Channel select valid
 assign chs_intrp_dv = s_intrp_dv && s_intrp_dr_c && ( s_intrp_ch < NR_CHANNELS );
-
-wire exponential;
-assign exponential = ATTENUATION && (( POLYNOMIAL == "LINEAR" ) ||
-    ( POLYNOMIAL == "2ND_ORDER" )) && !head && ( EXPONENTIAL == select );
 wire reset;
 assign reset = !rst_n || ( RESET == select );
 
@@ -329,41 +332,44 @@ always @(posedge clk) begin : fifo
 /*============================================================================*/
     if ( chs_intrp_dv ) begin
         if ( POLYNOMIAL == "LINEAR" ) begin // Conditional synthesis!
-            { p0[ intrp_ch ], n1[ intrp_ch ] } <= { n1_c, s_intrp_d };
+            {p0[intrp_ch], n1[intrp_ch]} <= {n1_c, s_intrp_d};
+            exponential[ intrp_ch ] <= ( ATTENUATION && ( EXPONENTIAL == select ));
         end
         if (( POLYNOMIAL == "2ND_ORDER" ) ||
             ( POLYNOMIAL == "3RD_ORDER" ) ||
             ( POLYNOMIAL == "5TH_ORDER" )) begin // Conditional synthesis!
-            { p1[ intrp_ch ],
-              p0[ intrp_ch ],
-              n1[ intrp_ch ],
-              n2[ intrp_ch ] } <= { p0_c, n1_c, n2_c, s_intrp_d };
+            {p1[intrp_ch],
+             p0[intrp_ch],
+             n1[intrp_ch],
+             n2[intrp_ch]} <= {p0_c, n1_c, n2_c, s_intrp_d};
         end
         if ( POLYNOMIAL == "4TH_ORDER" ) begin // Conditional synthesis!
-            { p2[ intrp_ch ],
-              p1[ intrp_ch ],
-              p0[ intrp_ch ],
-              n1[ intrp_ch ],
-              n2[ intrp_ch ] } <= { p1_c, p0_c, n1_c, n2_c, s_intrp_d };
+            {p2[intrp_ch],
+             p1[intrp_ch],
+             p0[intrp_ch],
+             n1[intrp_ch],
+             n2[intrp_ch]} <= {p1_c, p0_c, n1_c, n2_c, s_intrp_d};
         end
         if ( POLYNOMIAL == "2ND_ORDER" ) begin // Conditional synthesis!
-            head <= ( HEAD == select );
+            head[intrp_ch] <= ( HEAD == select );
+            exponential[intrp_ch] <= ( ATTENUATION && ( EXPONENTIAL == select ));
         end
     end
-    if ( exponential && attn ) begin // Conditional synthesis!
-            p1[ intrp_ch ] <= -m_intrp_d_i; // y(x) = ax + b => b = 0
-            p0[ intrp_ch ] <= 0; // y(x) = x(ax + b) + c => b = 0, c = 0
-            n1[ intrp_ch ] <= m_intrp_d_i;
+    if ( exponential[intrp_ch] && attn && ATTENUATION ) begin // Conditional synthesis!
+            p1[intrp_ch] <= -m_intrp_d_i; // y(x) = ax + b => b = 0
+            p0[intrp_ch] <= 0; // y(x) = x(ax + b) + c => b = 0, c = 0
+            n1[intrp_ch] <= m_intrp_d_i;
     end
     if ( reset ) begin
         for ( i = 0; i < CHN; i = i + 1 ) begin
+            head[i] <= 0;
+            exponential[i] <= 0;
             p2[i] <= 0;
             p1[i] <= 0;
             p0[i] <= 0;
             n1[i] <= 0;
             n2[i] <= 0;
         end
-        head <= 0;
     end
 end // fifo
 
@@ -379,6 +385,8 @@ reg signed [INW-1:0] exp_threshold [0:CHN-1];
 initial begin
 /*============================================================================*/
     for ( i = 0; i < CHN; i = i + 1 ) begin // Initialize data memory
+        head[i] = 0;
+        exponential[i] = 0;
         p2[i] = 0;
         p1[i] = 0;
         p0[i] = 0;
@@ -403,7 +411,7 @@ reg yx = 0;
 
 assign s_intrp_nchr = s0 & ( NR_CHANNELS > 1 ); // Set next channel already if required!
 wire [CNTRW:0] acc_fraction_c;
-assign acc_fraction_c = acc_fraction_i + { 1'b0, step_i };
+assign acc_fraction_c = acc_fraction_i + {1'b0, step_i};
 wire next_x_c;
 assign next_x_c = |acc_fraction_c[CNTRW:CNTRW-1];
 wire stop_exponential;
@@ -421,6 +429,9 @@ always @(posedge clk) begin : accumulate_fraction
     s0 <= s1 & ( ~s_intrp_dr_c | s0_i );
     next_x_i <= 0; // To match s2/s3 timing
     next_x <= next_x_i;
+    if ( next_x_i ) begin
+        s_intrp_dr_ii <= 1;
+    end
     if ( next_x ) begin
         s_intrp_dr_i[m_intrp_ch_i] <= 1;
     end
@@ -439,7 +450,7 @@ always @(posedge clk) begin : accumulate_fraction
         acc_fraction_i <= 0;
         if ( fraction != 0 ) begin // Ignore fraction when zero!
             step_i <= fraction;
-            if ( exponential ) begin // Conditional synthesis!
+            if ( ATTENUATION && ( EXPONENTIAL == select ) ) begin // Conditional synthesis!
                 s0 <= 1;
                 step_i <= 0;
                 acc_fraction_i <= { 1'b0, fraction };
@@ -460,7 +471,7 @@ always @(posedge clk) begin : accumulate_fraction
             s_intrp_dr_ii <= 1;
         end
     end else if ( s1 ) begin // Restore (updated) channel step and acc_fraction
-        s_intrp_dr_ii <= s_intrp_dr_c;
+        s_intrp_dr_ii <= ATTENUATION ? 0 : s_intrp_dr_c;
         step_i <= step[m_intrp_ch_i];
         acc_fraction_i <= acc_fraction[m_intrp_ch_i];
     end
@@ -469,24 +480,32 @@ always @(posedge clk) begin : accumulate_fraction
         s0_i <= 0; // Reset continuation interpolation!
         step[m_intrp_ch_i] <= step_i;
         acc_fraction[m_intrp_ch_i] <= { 2'b0, acc_fraction_c[CNTRW-2:0]};
-        if ( exponential ) begin // Conditional synthesis!
+        if ( exponential[intrp_ch] ) begin // Conditional synthesis!
             acc_fraction[m_intrp_ch_i] <= acc_fraction_c;
         end
     end
-    if ( yx && !exponential ) begin // Conditional synthesis!
+    if ( ATTENUATION ) begin // Conditional synthesis!
+        if ( attn ) begin
+            if ( exponential[intrp_ch] ) begin
+                s3 <= ~stop_exponential | m_intrp_dr; // Continue attenuation?
+                next_x_i <= stop_exponential;
+                if ( stop_exponential ) begin // Set fraction to 1.0!
+                    acc_fraction[m_intrp_ch_i] <= {2'b01, {( CNTRW - 1 ){1'b0}}};
+                end
+            end else begin
+                s3 <= m_intrp_dr; // Continue attenuation?
+                next_x_i <= next_x_c;
+                if ( next_x_c ) begin // Set fraction to 1.0, step to 0!
+                    step[m_intrp_ch_i] <= 0;
+                    acc_fraction[m_intrp_ch_i] <= {2'b01, {( CNTRW - 1 ){1'b0}}};
+                end
+            end
+        end
+    end else if ( yx ) begin // Conditional synthesis!
         if ( m_intrp_dr ) begin
             s2 <= 1;
             next_x <= next_x_c;
             s_intrp_dr_ii <= 1;
-        end
-    end
-    if ( attn && ATTENUATION ) begin // Conditional synthesis!
-        if ( exponential ) begin
-            s3 <= ~stop_exponential | m_intrp_dr;
-            next_x_i <= stop_exponential;
-            if ( stop_exponential ) begin // Set fraction to 1.0!
-                acc_fraction[m_intrp_ch_i] <= {2'b01, {( CNTRW - 1 ){1'b0}}};
-            end
         end
     end
     if ( reset ) begin
@@ -570,7 +589,7 @@ always @(*) begin : multiplication_and_calc_coeff
     product_c = ( p_arg_1 * p_arg_2 ) + // Round to zero (for negative values)!
         $signed( {{( ASW + 2 ){1'b0}}, {( CNTRW - 1 ){p_arg_1[CNTRW-1] ^ p_arg_2[ASW-1]}}} );
     if ( POLYNOMIAL == "2ND_ORDER" ) begin // Conditional synthesis!
-        if ( head ) begin // "head" interpolation
+        if ( head[intrp_ch] ) begin // "head" interpolation
             // 2a = p0 - 2n1 + n2
             a     = ( p0_c - n1_x_2 + n2_c ) >>> 1; // Sign extension shift!
             // 2b = -3p0 + 4n1 - n2
