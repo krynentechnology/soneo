@@ -45,7 +45,6 @@ reg rst_n = 0; // Synchronous reset, high when clk is stable!
 reg  [INW-1:0] s_intrp1_d = 0;
 reg  s_intrp1_dv = 0;
 wire s_intrp1_dr;
-wire s_intrp1_nchr;
 reg  [CNTRW-1:0] fraction1 = 0; // 1.CNTRW-1 fraction value
 reg  [2:0] select1 = 0;
 reg  [INW-1:0] s_signal1_d = SIGNAL_6DB;
@@ -56,6 +55,7 @@ wire m_intrp1_dv;
 reg  m_intrp1_dr = 1;
 wire [OUTW-1:0] m_signal1_d;
 wire m_signal1_dv;
+reg  stop_attn1 = 0;
 wire overflow1;
 
 interpolator #(
@@ -71,17 +71,19 @@ intrp1(
     .s_intrp_ch(1'b0),
     .s_intrp_dv(s_intrp1_dv),
     .s_intrp_dr(s_intrp1_dr),
-    .s_intrp_nchr(s_intrp1_nchr),
+    .s_intrp_nchr(),
     .fraction(fraction1),
     .select(select1),
     .s_signal_d(s_signal1_d),
     .s_signal_dv(s_signal1_dv),
     .s_signal_dr(s_signal1_dr),
     .m_intrp_d(m_intrp1_d),
+    .m_intrp_ch(),
     .m_intrp_dv(m_intrp1_dv),
     .m_intrp_dr(m_intrp1_dv & m_intrp1_dr),
     .m_signal_d(m_signal1_d),
     .m_signal_dv(m_signal1_dv),
+    .stop_attn(stop_attn1),
     .overflow(overflow1));
 
 reg  [INW-1:0] s_intrp2_d = 0;
@@ -107,11 +109,19 @@ intrp2(
     .s_intrp_ch(1'b0),
     .s_intrp_dv(s_intrp2_dv),
     .s_intrp_dr(s_intrp2_dr),
+    .s_intrp_nchr(),
     .fraction(fraction2),
     .select(select2),
+    .s_signal_d(),
+    .s_signal_dv(1'b0),
+    .s_signal_dr(),
     .m_intrp_d(m_intrp2_d),
+    .m_intrp_ch(),
     .m_intrp_dv(m_intrp2_dv),
     .m_intrp_dr(m_intrp2_dr),
+    .m_signal_d(),
+    .m_signal_dv(),
+    .stop_attn(1'b0),
     .overflow(overflow2));
 
 wire [INW-1:0] s_intrp_d;  // Input for intrp3/4/5/6!
@@ -144,10 +154,16 @@ intrp3(
     .s_intrp_nchr(s_intrp3_nchr),
     .fraction(fraction),
     .select(select),
+    .s_signal_d(),
+    .s_signal_dv(1'b0),
+    .s_signal_dr(),
     .m_intrp_d(m_intrp3_d),
     .m_intrp_ch(m_intrp3_ch),
     .m_intrp_dv(m_intrp3_dv),
     .m_intrp_dr(m_intrp3_dr),
+    .m_signal_d(),
+    .m_signal_dv(),
+    .stop_attn(1'b0),
     .overflow(overflow3));
 
 wire s_intrp4_dr;
@@ -168,11 +184,19 @@ intrp4(
     .s_intrp_ch(1'b0),
     .s_intrp_dv(s_intrp_dv),
     .s_intrp_dr(s_intrp4_dr),
+    .s_intrp_nchr(),
     .fraction(fraction),
     .select(select),
+    .s_signal_d(),
+    .s_signal_dv(1'b0),
+    .s_signal_dr(),
     .m_intrp_d(m_intrp4_d),
+    .m_intrp_ch(),
     .m_intrp_dv(m_intrp4_dv),
     .m_intrp_dr(m_intrp_dr),
+    .m_signal_d(),
+    .m_signal_dv(),
+    .stop_attn(1'b0),
     .overflow(overflow4));
 
 wire s_intrp5_dr;
@@ -193,11 +217,19 @@ intrp5(
     .s_intrp_ch(1'b0),
     .s_intrp_dv(s_intrp_dv),
     .s_intrp_dr(s_intrp5_dr),
+    .s_intrp_nchr(),
     .fraction(fraction),
     .select(select),
+    .s_signal_d(),
+    .s_signal_dv(1'b0),
+    .s_signal_dr(),
     .m_intrp_d(m_intrp5_d),
+    .m_intrp_ch(),
     .m_intrp_dv(m_intrp5_dv),
     .m_intrp_dr(m_intrp_dr),
+    .m_signal_d(),
+    .m_signal_dv(),
+    .stop_attn(1'b0),
     .overflow(overflow5));
 
 wire s_intrp6_dr;
@@ -218,11 +250,19 @@ intrp6(
     .s_intrp_ch(1'b0),
     .s_intrp_dv(s_intrp_dv),
     .s_intrp_dr(s_intrp6_dr),
+    .s_intrp_nchr(),
     .fraction(fraction),
     .select(select),
+    .s_signal_d(),
+    .s_signal_dv(1'b0),
+    .s_signal_dr(),
     .m_intrp_d(m_intrp6_d),
+    .m_intrp_ch(),
     .m_intrp_dv(m_intrp6_dv),
     .m_intrp_dr(m_intrp_dr),
+    .m_signal_d(),
+    .m_signal_dv(),
+    .stop_attn(1'b0),
     .overflow(overflow6));
 
 defparam intrp6.POLYNOMIAL = "5TH_ORDER";
@@ -318,11 +358,12 @@ begin
     wait( s_intrp1_dr );
     wait( !s_intrp1_dr );
     #500 // Interpolation and attenuation continue while m_intrp1_dr = 1!
-    wait( m_intrp1_dv );
-    wait ( clk ) @( posedge clk );
-    m_intrp1_dr = 0; // Discontinue attenuation
     wait( s_intrp1_dr );
-    s_signal1_dv = 0;
+    wait( !s_intrp1_dr );
+    stop_attn1 = 1; // Stop attenuation
+    wait( m_intrp1_dv );
+    wait( s_intrp1_dr );
+    stop_attn1 = 0;
 end
 endtask // setup_linear_shapes
 
@@ -450,6 +491,7 @@ initial begin
     fraction2 = 0;
     fraction = 0;
     select = 0;
+    stop_attn1 = 0;
     sg_enabled = 0;
     swg_enabled = 0;
     mute = 0;

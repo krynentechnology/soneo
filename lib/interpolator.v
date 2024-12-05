@@ -198,6 +198,7 @@ module interpolator #(
     s_signal_d, s_signal_dv, s_signal_dr, // Signal to be attenuated when valid (_dv)
     m_intrp_d, m_intrp_ch, m_intrp_dv, m_intrp_dr, // _dv = data valid, _dr = data ready
     m_signal_d, m_signal_dv, // Attenuated signal
+    stop_attn, // Stop signal attenuation for channel s_intrp_ch!
     overflow
     );
 
@@ -249,6 +250,7 @@ output wire m_intrp_dv;
 input  wire m_intrp_dr; // Signal to continue interpolation when ATTENUATION=1
 output wire [OUTW-1:0] m_signal_d; // Valid one clock cycle after m_intrp_dv!
 output reg  m_signal_dv = 0;
+input  wire stop_attn; // Set after s_intrp_dr 1->0, before m_intrp_dv!
 output wire overflow;
 /**
  * The 1.CNTRW-1 fraction (step) value represents a maximum of 2. E.g. an input
@@ -309,8 +311,8 @@ reg [CHW-1:0] m_intrp_ch_i = 0;
 reg m_intrp_dv_i = 0;
 
 // Booleans
-reg head[0:CHN-1];
-reg exponential[0:CHN-1];
+reg [CHN-1:0] head;
+reg [CHN-1:0] exponential;
 reg attn = 0;
 
 wire [CHW-1:0] intrp_ch;
@@ -362,14 +364,14 @@ always @(posedge clk) begin : fifo
     end
     if ( reset ) begin
         for ( i = 0; i < CHN; i = i + 1 ) begin
-            head[i] <= 0;
-            exponential[i] <= 0;
             p2[i] <= 0;
             p1[i] <= 0;
             p0[i] <= 0;
             n1[i] <= 0;
             n2[i] <= 0;
         end
+        head <= 0;
+        exponential <= 0;
     end
 end // fifo
 
@@ -434,6 +436,9 @@ always @(posedge clk) begin : accumulate_fraction
     end
     if ( next_x ) begin
         s_intrp_dr_i[m_intrp_ch_i] <= 1;
+        if ( stop_attn && ATTENUATION ) begin
+            s_intrp_dr_i[s_intrp_ch] <= 1;
+        end
     end
     if ( s3 ) begin
         s0_i <= 1; // Continue interpolation!
@@ -471,7 +476,7 @@ always @(posedge clk) begin : accumulate_fraction
             s_intrp_dr_ii <= 1;
         end
     end else if ( s1 ) begin // Restore (updated) channel step and acc_fraction
-        s_intrp_dr_ii <= ATTENUATION ? 0 : s_intrp_dr_c;
+        s_intrp_dr_ii <= ATTENUATION ? 1'b0 : s_intrp_dr_c;
         step_i <= step[m_intrp_ch_i];
         acc_fraction_i <= acc_fraction[m_intrp_ch_i];
     end
@@ -499,6 +504,10 @@ always @(posedge clk) begin : accumulate_fraction
                     step[m_intrp_ch_i] <= 0;
                     acc_fraction[m_intrp_ch_i] <= {2'b01, {( CNTRW - 1 ){1'b0}}};
                 end
+            end
+            if ( stop_attn ) begin
+                s3 <= 0;
+                next_x_i <= 1;
             end
         end
     end else if ( yx ) begin // Conditional synthesis!
