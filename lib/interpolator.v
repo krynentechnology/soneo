@@ -694,6 +694,13 @@ assign overflow_cx_plus_d_r =
 reg signed [INW-1:0] s_signal_d_i = 0;
 reg signed [OUTW-1:0] m_signal_d_i = 0;
 
+wire ax_s0_n;
+assign ax_s0_n = ax && !s0;
+wire ax_x_6_s0_n;
+assign ax_x_6_s0_n = ax_x_6 && !s0;
+wire ax_x_24_s0_n;
+assign ax_x_24_s0_n = ax_x_24 && !s0;
+
 /*============================================================================*/
 always @(posedge clk) begin : calc_y
 /*============================================================================*/
@@ -707,20 +714,20 @@ always @(posedge clk) begin : calc_y
     if ( POLYNOMIAL == "LINEAR" ) begin // Conditional synthesis!
         // y(x) = ax + b
         ax <= s0;
-        if ( ax && !s0 ) begin
+        if ( ax_s0_n ) begin
             p_arg_1 <= x0_1;
             p_arg_2 <= n1_minus_p0;
         end
-        yx <= ax;
+        yx <= ax_s0_n;
     end
     if ( POLYNOMIAL == "2ND_ORDER" ) begin // Conditional synthesis!
         // y(x) = x(ax + b) + c
         ax <= s0;
-        if ( ax && !s0 ) begin
+        if ( ax_s0_n ) begin
             p_arg_1 <= x0_1;
             p_arg_2 <= a;
         end
-        ax_plus_b <= ax;
+        ax_plus_b <= ax_s0_n;
         if ( ax_plus_b ) begin
             p_arg_1 <= x0_1;
             p_arg_2 <= product_c_asw + b;
@@ -730,11 +737,11 @@ always @(posedge clk) begin : calc_y
     if ( POLYNOMIAL == "3RD_ORDER" ) begin // Conditional synthesis!
         // y(x) = x(x(ax + b) + c) + d
         ax_x_6 <= s0;
-        if ( ax_x_6 && !s0 ) begin
+        if ( ax_x_6_s0_n ) begin
             p_arg_1 <= x0_1;
             p_arg_2 <= a_x_6;
         end
-        ax <= ax_x_6;
+        ax <= ax_x_6_s0_n;
         if ( ax ) begin
             p_arg_1 <= ONE_SIXTH;
             p_arg_2 <= product_c_asw;
@@ -766,11 +773,11 @@ always @(posedge clk) begin : calc_y
     if ( POLYNOMIAL == "4TH_ORDER" ) begin // Conditional synthesis!
         // y(x) = x(x(x(ax + b) + c) + d) + e
         ax_x_24 <= s0;
-        if ( ax_x_24 && !s0 ) begin
+        if ( ax_x_24_s0_n ) begin
             p_arg_1 <= x0_1;
             p_arg_2 <= a_x_24;
         end
-        ax_plus_b_x_24 <= ax_x_24;
+        ax_plus_b_x_24 <= ax_x_24_s0_n;
         if ( ax_plus_b_x_24 ) begin
             p_arg_1 <= ONE_TWENTY_FOURTH;
             p_arg_2 <= product_c_asw + ( b_x_12 << 1 );
@@ -812,11 +819,11 @@ always @(posedge clk) begin : calc_y
     if ( POLYNOMIAL == "5TH_ORDER" ) begin // Conditional synthesis!
         // y(x) = x(x(x(x(ax + b) + c) + d) + e) + f  // 5th order polynomial
         ax <= s0;
-        if ( ax && !s0 ) begin
+        if ( ax_s0_n ) begin
             p_arg_1 <= x0_1;
             p_arg_2 <= a;
         end
-        ax_plus_b <= ax;
+        ax_plus_b <= ax_s0_n;
         if ( ax_plus_b ) begin
             // p_arg_1 <= x0_1;
             p_arg_2 <= product_c_asw + b;
