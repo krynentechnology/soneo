@@ -135,7 +135,117 @@
 1 1111111111110 a 11 -&gt; 1 1100 a   1 1111111111110 0 11 -&gt; 1 1100 0  -13    -&gt; -8    1 1111111111110 1 11 -&gt; 1 1100 1  -9     -&gt; -7
 1 11111111111110 a 1 -&gt; 1 1101 a   1 11111111111110 0 1 -&gt; 1 1101 0  -7     -&gt; -6    1 11111111111110 1 1 -&gt; 1 1101 1  -5     -&gt; -5
 1 111111111111110  a -&gt; 1 1110 a   1 111111111111110  0 -&gt; 1 1110 0  -4     -&gt; -4    1 111111111111110  1 -&gt; 1 1110 1  -3     -&gt; -3
-1 111111111111111  a -&gt; 1 1111 a   1 111111111111111  0 -&gt; 1 1111 0  -2     -&gt; -2    1 111111111111111  1 -&gt; 1 1111 1  -1     -&gt; -1</pre>
+1 111111111111111  a -&gt; 1 1111 a   1 111111111111111  0 -&gt; 1 1111 0  -2     -&gt; -2    1 111111111111111  1 -&gt; 1 1111 1  -1     -&gt; -1
+
+Companding could limit signals, signal attenuation above -6dB (is considered RMS level - continuous output)
+
+Companding 20-bit signal -> 17-bit, maximum 18dB attenuation
+
+<i>s</i>                         <i>s              step</i>
+0 0000 abcdefghijklmno -&gt; 0 0 abcdefghijklmno
+0 0001 abcdefghijklmno -&gt; 0 10 abcdefghijklmn
+0 0010 abcdefghijklmno -&gt; 0 110 abcdefghijklm
+0 0011 abcdefghijklmno -&gt; 0 1110 abcdefghijkl
+0 0100 abcdefghijklmno -&gt; 0 11110 abcdefghijk
+0 0101 abcdefghijklmno -&gt; 0 111110 abcdefghij
+0 0110 abcdefghijklmno -&gt; 0 1111110 abcdefghi
+0 0111 abcdefghijklmno -&gt; 0 11111110 abcdefgh
+0 1000 abcdefghijklmno -&gt; 0 111111110 abcdefg
+0 1001 abcdefghijklmno -&gt; 0 1111111110 abcdef
+0 1010 abcdefghijklmno -&gt; 0 11111111110 abcde
+0 1011 abcdefghijklmno -&gt; 0 111111111110 abcd
+0 1100 abcdefghijklmno -&gt; 0 1111111111110 abc
+0 1101 abcdefghijklmno -&gt; 0 11111111111110 ab
+0 1110 abcdefghijklmno -&gt; 0 111111111111110 a
+0 1111 abcdefghijklmno -&gt; 0 111111111111111 a
+
+<i>s</i>                         <i>s              step</i>
+1 1111 abcdefghijklmno -&gt; 1 1 abcdefghijklmno
+1 1110 abcdefghijklmno -&gt; 1 01 abcdefghijklmn
+1 1101 abcdefghijklmno -&gt; 1 001 abcdefghijklm
+1 1100 abcdefghijklmno -&gt; 1 0001 abcdefghijkl
+1 1011 abcdefghijklmno -&gt; 1 00001 abcdefghijk
+1 1010 abcdefghijklmno -&gt; 1 000001 abcdefghij
+1 1001 abcdefghijklmno -&gt; 1 0000001 abcdefghi
+1 1000 abcdefghijklmno -&gt; 1 00000001 abcdefgh
+1 0111 abcdefghijklmno -&gt; 1 000000001 abcdefg
+1 0110 abcdefghijklmno -&gt; 1 0000000001 abcdef
+1 0101 abcdefghijklmno -&gt; 1 00000000001 abcde
+1 0100 abcdefghijklmno -&gt; 1 000000000001 abcd
+1 0011 abcdefghijklmno -&gt; 1 0000000000001 abc
+1 0010 abcdefghijklmno -&gt; 1 00000000000001 ab
+1 0001 abcdefghijklmno -&gt; 1 000000000000001 a
+1 0000 abcdefghijklmno -&gt; 1 000000000000000 a
+
+Companding 37-bit signal -> 33-bit, maximum 24dB attenuation
+
+<i>s</i>                                          <i>s                              step</i>
+0 00000 abcdefghijklmnopqrstuvwxyzabcde -&gt; 0 0 abcdefghijklmnopqrstuvwxyzabcde
+0 00001 abcdefghijklmnopqrstuvwxyzabcde -&gt; 0 10 abcdefghijklmnopqrstuvwxyzabcd
+0 00010 abcdefghijklmnopqrstuvwxyzabcde -&gt; 0 110 abcdefghijklmnopqrstuvwxyzabc
+0 00011 abcdefghijklmnopqrstuvwxyzabcde -&gt; 0 1110 abcdefghijklmnopqrstuvwxyzab
+0 00100 abcdefghijklmnopqrstuvwxyzabcde -&gt; 0 11110 abcdefghijklmnopqrstuvwxyzy
+0 00101 abcdefghijklmnopqrstuvwxyzabcde -&gt; 0 111110 abcdefghijklmnopqrstuvwxyz
+0 00110 abcdefghijklmnopqrstuvwxyzabcde -&gt; 0 1111110 abcdefghijklmnopqrstuvwxy
+0 00111 abcdefghijklmnopqrstuvwxyzabcde -&gt; 0 11111110 abcdefghijklmnopqrstuvwx
+0 01000 abcdefghijklmnopqrstuvwxyzabcde -&gt; 0 111111110 abcdefghijklmnopqrstuvw
+0 01001 abcdefghijklmnopqrstuvwxyzabcde -&gt; 0 1111111110 abcdefghijklmnopqrstuv
+0 01010 abcdefghijklmnopqrstuvwxyzabcde -&gt; 0 11111111110 abcdefghijklmnopqrstu
+0 01011 abcdefghijklmnopqrstuvwxyzabcde -&gt; 0 111111111110 abcdefghijklmnopqrst
+0 01100 abcdefghijklmnopqrstuvwxyzabcde -&gt; 0 1111111111110 abcdefghijklmnopqrs
+0 01101 abcdefghijklmnopqrstuvwxyzabcde -&gt; 0 11111111111110 abcdefghijklmnopqr
+0 01110 abcdefghijklmnopqrstuvwxyzabcde -&gt; 0 111111111111110 abcdefghijklmnopq
+0 01111 abcdefghijklmnopqrstuvwxyzabcde -&gt; 0 1111111111111110 abcdefghijklmnop
+0 10000 abcdefghijklmnopqrstuvwxyzabcde -&gt; 0 11111111111111110 abcdefghijklmno
+0 10001 abcdefghijklmnopqrstuvwxyzabcde -&gt; 0 111111111111111110 abcdefghijklmn
+0 10010 abcdefghijklmnopqrstuvwxyzabcde -&gt; 0 1111111111111111110 abcdefghijklm
+0 10011 abcdefghijklmnopqrstuvwxyzabcde -&gt; 0 11111111111111111110 abcdefghijkl
+0 10100 abcdefghijklmnopqrstuvwxyzabcde -&gt; 0 111111111111111111110 abcdefghijk
+0 10101 abcdefghijklmnopqrstuvwxyzabcde -&gt; 0 1111111111111111111110 abcdefghij
+0 10110 abcdefghijklmnopqrstuvwxyzabcde -&gt; 0 11111111111111111111110 abcdefghi
+0 10111 abcdefghijklmnopqrstuvwxyzabcde -&gt; 0 111111111111111111111110 abcdefgh
+0 11000 abcdefghijklmnopqrstuvwxyzabcde -&gt; 0 1111111111111111111111110 abcdefg
+0 11001 abcdefghijklmnopqrstuvwxyzabcde -&gt; 0 11111111111111111111111110 abcdef
+0 11010 abcdefghijklmnopqrstuvwxyzabcde -&gt; 0 111111111111111111111111110 abcde
+0 11011 abcdefghijklmnopqrstuvwxyzabcde -&gt; 0 1111111111111111111111111110 abcd
+0 11100 abcdefghijklmnopqrstuvwxyzabcde -&gt; 0 11111111111111111111111111110 abc
+0 11101 abcdefghijklmnopqrstuvwxyzabcde -&gt; 0 111111111111111111111111111110 ab
+0 11110 abcdefghijklmnopqrstuvwxyzabcde -&gt; 0 1111111111111111111111111111110 a 
+0 11111 abcdefghijklmnopqrstuvwxyzabcde -&gt; 0 1111111111111111111111111111111 a
+
+<i>s</i>                                          <i>s                              step</i>
+1 11111 abcdefghijklmnopqrstuvwxyzabcde -&gt; 1 1 abcdefghijklmnopqrstuvwxyzabcde
+1 11110 abcdefghijklmnopqrstuvwxyzabcde -&gt; 1 01 abcdefghijklmnopqrstuvwxyzabcd
+1 11101 abcdefghijklmnopqrstuvwxyzabcde -&gt; 1 001 abcdefghijklmnopqrstuvwxyzabc
+1 11100 abcdefghijklmnopqrstuvwxyzabcde -&gt; 1 0001 abcdefghijklmnopqrstuvwxyzab
+1 11011 abcdefghijklmnopqrstuvwxyzabcde -&gt; 1 00001 abcdefghijklmnopqrstuvwxyzy
+1 11010 abcdefghijklmnopqrstuvwxyzabcde -&gt; 1 000001 abcdefghijklmnopqrstuvwxyz
+1 11001 abcdefghijklmnopqrstuvwxyzabcde -&gt; 1 0000001 abcdefghijklmnopqrstuvwxy
+1 11000 abcdefghijklmnopqrstuvwxyzabcde -&gt; 1 00000001 abcdefghijklmnopqrstuvwx
+1 10111 abcdefghijklmnopqrstuvwxyzabcde -&gt; 1 000000001 abcdefghijklmnopqrstuvw
+1 10110 abcdefghijklmnopqrstuvwxyzabcde -&gt; 1 0000000001 abcdefghijklmnopqrstuv
+1 10101 abcdefghijklmnopqrstuvwxyzabcde -&gt; 1 00000000001 abcdefghijklmnopqrstu
+1 10100 abcdefghijklmnopqrstuvwxyzabcde -&gt; 1 000000000001 abcdefghijklmnopqrst
+1 10011 abcdefghijklmnopqrstuvwxyzabcde -&gt; 1 0000000000001 abcdefghijklmnopqrs
+1 10010 abcdefghijklmnopqrstuvwxyzabcde -&gt; 1 00000000000001 abcdefghijklmnopqr
+1 10001 abcdefghijklmnopqrstuvwxyzabcde -&gt; 1 000000000000001 abcdefghijklmnopq
+1 10000 abcdefghijklmnopqrstuvwxyzabcde -&gt; 1 0000000000000001 abcdefghijklmnop
+1 01111 abcdefghijklmnopqrstuvwxyzabcde -&gt; 1 00000000000000001 abcdefghijklmno
+1 01110 abcdefghijklmnopqrstuvwxyzabcde -&gt; 1 000000000000000001 abcdefghijklmn
+1 01101 abcdefghijklmnopqrstuvwxyzabcde -&gt; 1 0000000000000000001 abcdefghijklm
+1 01100 abcdefghijklmnopqrstuvwxyzabcde -&gt; 1 00000000000000000001 abcdefghijkl
+1 01011 abcdefghijklmnopqrstuvwxyzabcde -&gt; 1 000000000000000000001 abcdefghijk
+1 01010 abcdefghijklmnopqrstuvwxyzabcde -&gt; 1 0000000000000000000001 abcdefghij
+1 01001 abcdefghijklmnopqrstuvwxyzabcde -&gt; 1 00000000000000000000001 abcdefghi
+1 01000 abcdefghijklmnopqrstuvwxyzabcde -&gt; 1 000000000000000000000001 abcdefgh
+1 00111 abcdefghijklmnopqrstuvwxyzabcde -&gt; 1 0000000000000000000000001 abcdefg
+1 00110 abcdefghijklmnopqrstuvwxyzabcde -&gt; 1 00000000000000000000000001 abcdef
+1 00101 abcdefghijklmnopqrstuvwxyzabcde -&gt; 1 000000000000000000000000001 abcde
+1 00100 abcdefghijklmnopqrstuvwxyzabcde -&gt; 1 0000000000000000000000000001 abcd
+1 00011 abcdefghijklmnopqrstuvwxyzabcde -&gt; 1 00000000000000000000000000001 abc
+1 00010 abcdefghijklmnopqrstuvwxyzabcde -&gt; 1 000000000000000000000000000001 ab
+1 00001 abcdefghijklmnopqrstuvwxyzabcde -&gt; 1 0000000000000000000000000000001 a
+1 00000 abcdefghijklmnopqrstuvwxyzabcde -&gt; 1 0000000000000000000000000000000 a</pre>
 
 </div></div><!-- end of content -->
 </div><!-- /container -->
