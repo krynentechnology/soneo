@@ -22,6 +22,7 @@ if "%1"=="" (
   iverilog -o equalizer_tb.out -I .. ..\equalizer.v ..\equalizer_tb.sv
   iverilog -o i2s_tdm_tb.out -I .. ..\i2s_tdm_enc.v ..\i2s_tdm_dec.v ..\i2s_tdm_tb.sv
   iverilog -o interpolator_tb.out -I .. ..\interpolator.v ..\interpolator_tb.sv
+  iverilog -o limiter_tb.out -I .. ..\limiter.v ..\limiter_tb.sv
   iverilog -o randomizer_tb.out -I .. ..\randomizer.v ..\randomizer_tb.sv
   iverilog -o sine_wg_cor_tb.out -I .. ..\sine_wg_cor.v ..\sine_wg_cor_tb.sv
   iverilog -o spi_tb.out -I .. ..\spi_master.v ..\spi_slave.v ..\spi_io.v ..\spi_tb.sv
@@ -34,6 +35,7 @@ if "%1"=="" (
     iverilog -DGTK_WAVE -o equalizer_tb.out -I .. ..\equalizer.v ..\equalizer_tb.sv
     iverilog -DGTK_WAVE -o i2s_tdm_tb.out -I .. ..\i2s_tdm_enc.v ..\i2s_tdm_dec.v ..\i2s_tdm_tb.sv
     iverilog -DGTK_WAVE -o interpolator_tb.out -I .. ..\interpolator.v ..\interpolator_tb.sv
+    iverilog -DGTK_WAVE -o limiter_tb.out -I .. ..\limiter.v ..\limiter_tb.sv
     iverilog -DGTK_WAVE -o randomizer_tb.out -I .. ..\randomizer.v ..\randomizer_tb.sv
     iverilog -DGTK_WAVE -o sine_wg_cor_tb.out -I .. ..\sine_wg_cor.v ..\sine_wg_cor_tb.sv
     iverilog -DGTK_WAVE -o spi_tb.out -I .. ..\spi_master.v ..\spi_slave.v ..\spi_io.v ..\spi_tb.sv
@@ -45,6 +47,7 @@ if "%1"=="" (
     iverilog -I .. ..\equalizer.v ..\equalizer_tb.sv
     iverilog -I .. ..\i2s_tdm_enc.v ..\i2s_tdm_dec.v ..\i2s_tdm_tb.sv
     iverilog -I .. ..\interpolator.v ..\interpolator_tb.sv
+    iverilog -I .. ..\limiter.v ..\limiter_tb.sv
     iverilog -I .. ..\randomizer.v ..\randomizer_tb.sv
     iverilog -I .. ..\sine_wg_cor.v ..\sine_wg_cor_tb.sv
     iverilog -I .. ..\spi_master.v ..\spi_slave.v ..\spi_io.v ..\spi_tb.sv
@@ -57,6 +60,7 @@ if exist compander_tb.out vvp compander_tb.out
 if exist equalizer_tb.out vvp equalizer_tb.out
 if exist i2s_tdm_tb.out vvp i2s_tdm_tb.out
 if exist interpolator_tb.out vvp interpolator_tb.out
+if exist limiter_tb.out vvp limiter_tb.out
 if exist randomizer_tb.out vvp randomizer_tb.out
 if exist sine_wg_cor_tb.out vvp sine_wg_cor_tb.out
 if exist spi_tb.out vvp spi_tb.out

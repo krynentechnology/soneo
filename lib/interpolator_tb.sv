@@ -617,7 +617,7 @@ always @(posedge clk) begin : collect_intrp_data
     end
 end
 
-////////////////// Sine generator for NR_CHANNELS-1 channels ///////////////////
+/////////////////// Sine generator for NR_CHANNELS channels ////////////////////
 reg signed [INPUT_WIDTH-1:0] sg_d = 0;
 reg signed [INPUT_WIDTH-1:0] sg_d_c;
 reg [CHW-1:0] sg_ch = 0;
@@ -674,7 +674,6 @@ always @(posedge clk) begin : sine_generator
         sine_counter[2] <= 0;
         sg_d <= 0;
         sg_dv <= 0;
-        sg_ch <= 0;
         sg_ch <= 0;
     end
 end // sine_generator
