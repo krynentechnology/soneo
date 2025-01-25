@@ -101,11 +101,11 @@ endfunction
 
 localparam ATAN_TBL_WIDTH = clog2( PRECISION - 1 );
 localparam real FACTOR_1_0 = 2.0 ** ( RW - 3 );
-localparam real K_FACTOR = ( FACTOR_1_0 * 2.0 * 0.607252935008881444822748 ) + 0.5;
+localparam real K_FACTOR = ( FACTOR_1_0 * 2.0 * 0.607252935008881444822748 );
 localparam [RW-1:0] FACTOR_1 = FACTOR_1_0;
 
 localparam real MATH_PI = 3.141592653589793115997963;
-localparam [RW:0] PI_OVER_2 = ( FACTOR_1_0 * MATH_PI / 2.0 ) + 0.5;
+localparam [RW:0] PI_OVER_2 = ( FACTOR_1_0 * MATH_PI / 2.0 );
 localparam [RW:0] PI = PI_OVER_2 << 1; // PI = 2 x PI_OVER_2 exactly!
 localparam [RW:0] PI_X_2 = PI << 1;
 
@@ -278,40 +278,40 @@ initial begin : init_cordic_table // Generate table with e.g. Octave
 // ATAN angle (radian) lookup table.
 //
 // fid=fopen('cor_tangle_table.txt', 'w+')
-// for n=0:24 fprintf( fid, '    tangle_table[%d] = ( FACTOR_1 * %.24f ) + 0.5;\n', n, atan( 1 / power( 2, n ))) endfor
+// for n=0:24 fprintf( fid, '    tangle_table[%d] = ( FACTOR_1 * %.24f );\n', n, atan( 1 / power( 2, n ))) endfor
 // fclose(fid)
-    tangle_table[0] = ( FACTOR_1 * 0.785398163397448278999491 ) + 0.5;
-    tangle_table[1] = ( FACTOR_1 * 0.463647609000806093515479 ) + 0.5;
-    tangle_table[2] = ( FACTOR_1 * 0.244978663126864143473327 ) + 0.5;
-    tangle_table[3] = ( FACTOR_1 * 0.124354994546761438156679 ) + 0.5;
-    tangle_table[4] = ( FACTOR_1 * 0.062418809995957350023055 ) + 0.5;
-    tangle_table[5] = ( FACTOR_1 * 0.031239833430268277442154 ) + 0.5;
-    if ( 6  < PRECISION ) tangle_table[6]  = ( FACTOR_1 * 0.015623728620476831294162 ) + 0.5;
-    if ( 7  < PRECISION ) tangle_table[7]  = ( FACTOR_1 * 0.007812341060101111143987 ) + 0.5;
-    if ( 8  < PRECISION ) tangle_table[8]  = ( FACTOR_1 * 0.003906230131966971757390 ) + 0.5;
-    if ( 9  < PRECISION ) tangle_table[9]  = ( FACTOR_1 * 0.001953122516478818758434 ) + 0.5;
-    if ( 10 < PRECISION ) tangle_table[10] = ( FACTOR_1 * 0.000976562189559319459436 ) + 0.5;
-    if ( 11 < PRECISION ) tangle_table[11] = ( FACTOR_1 * 0.000488281211194898289926 ) + 0.5;
-    if ( 12 < PRECISION ) tangle_table[12] = ( FACTOR_1 * 0.000244140620149361771245 ) + 0.5;
-    if ( 13 < PRECISION ) tangle_table[13] = ( FACTOR_1 * 0.000122070311893670207853 ) + 0.5;
-    if ( 14 < PRECISION ) tangle_table[14] = ( FACTOR_1 * 0.000061035156174208772594 ) + 0.5;
-    if ( 15 < PRECISION ) tangle_table[15] = ( FACTOR_1 * 0.000030517578115526095727 ) + 0.5;
-    if ( 16 < PRECISION ) tangle_table[16] = ( FACTOR_1 * 0.000015258789061315761542 ) + 0.5;
-    if ( 17 < PRECISION ) tangle_table[17] = ( FACTOR_1 * 0.000007629394531101969981 ) + 0.5;
-    if ( 18 < PRECISION ) tangle_table[18] = ( FACTOR_1 * 0.000003814697265606496142 ) + 0.5;
-    if ( 19 < PRECISION ) tangle_table[19] = ( FACTOR_1 * 0.000001907348632810186965 ) + 0.5;
-    if ( 20 < PRECISION ) tangle_table[20] = ( FACTOR_1 * 0.000000953674316405960844 ) + 0.5;
-    if ( 21 < PRECISION ) tangle_table[21] = ( FACTOR_1 * 0.000000476837158203088842 ) + 0.5;
-    if ( 22 < PRECISION ) tangle_table[22] = ( FACTOR_1 * 0.000000238418579101557974 ) + 0.5;
-    if ( 23 < PRECISION ) tangle_table[23] = ( FACTOR_1 * 0.000000119209289550780681 ) + 0.5;
-    if ( 24 < PRECISION ) tangle_table[24] = ( FACTOR_1 * 0.000000059604644775390552 ) + 0.5;
-    if ( 25 < PRECISION ) tangle_table[25] = ( FACTOR_1 * 0.000000029802322387695303 ) + 0.5;
-    if ( 26 < PRECISION ) tangle_table[26] = ( FACTOR_1 * 0.000000014901161193847655 ) + 0.5;
-    if ( 27 < PRECISION ) tangle_table[27] = ( FACTOR_1 * 0.000000007450580596923828 ) + 0.5;
-    if ( 28 < PRECISION ) tangle_table[28] = ( FACTOR_1 * 0.000000003725290298461914 ) + 0.5;
-    if ( 29 < PRECISION ) tangle_table[29] = ( FACTOR_1 * 0.000000001862645149230957 ) + 0.5;
-    if ( 30 < PRECISION ) tangle_table[30] = ( FACTOR_1 * 0.000000000931322574615479 ) + 0.5;
-    if ( 31 < PRECISION ) tangle_table[31] = ( FACTOR_1 * 0.000000000465661287307739 ) + 0.5;
+    tangle_table[0] = ( FACTOR_1 * 0.785398163397448278999491 );
+    tangle_table[1] = ( FACTOR_1 * 0.463647609000806093515479 );
+    tangle_table[2] = ( FACTOR_1 * 0.244978663126864143473327 );
+    tangle_table[3] = ( FACTOR_1 * 0.124354994546761438156679 );
+    tangle_table[4] = ( FACTOR_1 * 0.062418809995957350023055 );
+    tangle_table[5] = ( FACTOR_1 * 0.031239833430268277442154 );
+    if ( 6  < PRECISION ) tangle_table[6]  = ( FACTOR_1 * 0.015623728620476831294162 );
+    if ( 7  < PRECISION ) tangle_table[7]  = ( FACTOR_1 * 0.007812341060101111143987 );
+    if ( 8  < PRECISION ) tangle_table[8]  = ( FACTOR_1 * 0.003906230131966971757390 );
+    if ( 9  < PRECISION ) tangle_table[9]  = ( FACTOR_1 * 0.001953122516478818758434 );
+    if ( 10 < PRECISION ) tangle_table[10] = ( FACTOR_1 * 0.000976562189559319459436 );
+    if ( 11 < PRECISION ) tangle_table[11] = ( FACTOR_1 * 0.000488281211194898289926 );
+    if ( 12 < PRECISION ) tangle_table[12] = ( FACTOR_1 * 0.000244140620149361771245 );
+    if ( 13 < PRECISION ) tangle_table[13] = ( FACTOR_1 * 0.000122070311893670207853 );
+    if ( 14 < PRECISION ) tangle_table[14] = ( FACTOR_1 * 0.000061035156174208772594 );
+    if ( 15 < PRECISION ) tangle_table[15] = ( FACTOR_1 * 0.000030517578115526095727 );
+    if ( 16 < PRECISION ) tangle_table[16] = ( FACTOR_1 * 0.000015258789061315761542 );
+    if ( 17 < PRECISION ) tangle_table[17] = ( FACTOR_1 * 0.000007629394531101969981 );
+    if ( 18 < PRECISION ) tangle_table[18] = ( FACTOR_1 * 0.000003814697265606496142 );
+    if ( 19 < PRECISION ) tangle_table[19] = ( FACTOR_1 * 0.000001907348632810186965 );
+    if ( 20 < PRECISION ) tangle_table[20] = ( FACTOR_1 * 0.000000953674316405960844 );
+    if ( 21 < PRECISION ) tangle_table[21] = ( FACTOR_1 * 0.000000476837158203088842 );
+    if ( 22 < PRECISION ) tangle_table[22] = ( FACTOR_1 * 0.000000238418579101557974 );
+    if ( 23 < PRECISION ) tangle_table[23] = ( FACTOR_1 * 0.000000119209289550780681 );
+    if ( 24 < PRECISION ) tangle_table[24] = ( FACTOR_1 * 0.000000059604644775390552 );
+    if ( 25 < PRECISION ) tangle_table[25] = ( FACTOR_1 * 0.000000029802322387695303 );
+    if ( 26 < PRECISION ) tangle_table[26] = ( FACTOR_1 * 0.000000014901161193847655 );
+    if ( 27 < PRECISION ) tangle_table[27] = ( FACTOR_1 * 0.000000007450580596923828 );
+    if ( 28 < PRECISION ) tangle_table[28] = ( FACTOR_1 * 0.000000003725290298461914 );
+    if ( 29 < PRECISION ) tangle_table[29] = ( FACTOR_1 * 0.000000001862645149230957 );
+    if ( 30 < PRECISION ) tangle_table[30] = ( FACTOR_1 * 0.000000000931322574615479 );
+    if ( 31 < PRECISION ) tangle_table[31] = ( FACTOR_1 * 0.000000000465661287307739 );
 
     if ( 1'bx === tangle_table[PRECISION-1][0] ) begin
         $display( "ATAN tangle_table[%0d] is unknown!", ( PRECISION - 1 ));
@@ -323,41 +323,41 @@ initial begin : init_cordic_table // Generate table with e.g. Octave
 // fid=fopen('cor_k_table.txt', 'w+')
 // for n=1:25 cos_arctan(n)=cos( atan( 1 / power( 2, ( n - 1 )))); endfor
 // temp = 1.0; for n=1:32 temp=temp * cos_arctan(n); p(n) = temp; endfor
-// for n=1:25 fprintf( fid, '    k_table[%d] = ( FACTOR_1 * %.24f ) + 0.5;\n', (n-1), p(n) ) endfor
+// for n=1:25 fprintf( fid, '    k_table[%d] = ( FACTOR_1 * %.24f );\n', (n-1), p(n) ) endfor
 // fclose(fid)
 /*
-    k_table[0]  = ( FACTOR_1 * 0.707106781186547572737311 ) + 0.5;
-    k_table[1]  = ( FACTOR_1 * 0.632455532033675882352952 ) + 0.5;
-    k_table[2]  = ( FACTOR_1 * 0.613571991077896394806146 ) + 0.5;
-    k_table[3]  = ( FACTOR_1 * 0.608833912517752429138795 ) + 0.5;
-    k_table[4]  = ( FACTOR_1 * 0.607648256256168250999394 ) + 0.5;
-    k_table[5]  = ( FACTOR_1 * 0.607351770141296043448165 ) + 0.5;
-    k_table[6]  = ( FACTOR_1 * 0.607277644093526136614969 ) + 0.5;
-    k_table[7]  = ( FACTOR_1 * 0.607259112298892844705733 ) + 0.5;
-    k_table[8]  = ( FACTOR_1 * 0.607254479332562491222802 ) + 0.5;
-    k_table[9]  = ( FACTOR_1 * 0.607253321089875286453719 ) + 0.5;
-    k_table[10] = ( FACTOR_1 * 0.607253031529134457144892 ) + 0.5;
-    k_table[11] = ( FACTOR_1 * 0.607252959138944947703465 ) + 0.5;
-    k_table[12] = ( FACTOR_1 * 0.607252941041397265031776 ) + 0.5;
-    k_table[13] = ( FACTOR_1 * 0.607252936517010399875005 ) + 0.5;
-    k_table[14] = ( FACTOR_1 * 0.607252935385913628074661 ) + 0.5;
-    k_table[15] = ( FACTOR_1 * 0.607252935103139490635726 ) + 0.5;
-    k_table[16] = ( FACTOR_1 * 0.607252935032445928520417 ) + 0.5;
-    k_table[17] = ( FACTOR_1 * 0.607252935014772510236014 ) + 0.5;
-    k_table[18] = ( FACTOR_1 * 0.607252935010354155664913 ) + 0.5;
-    k_table[19] = ( FACTOR_1 * 0.607252935009249594777714 ) + 0.5;
-    k_table[20] = ( FACTOR_1 * 0.607252935008973482311490 ) + 0.5;
-    k_table[21] = ( FACTOR_1 * 0.607252935008904426439358 ) + 0.5;
-    k_table[22] = ( FACTOR_1 * 0.607252935008887217982476 ) + 0.5;
-    k_table[23] = ( FACTOR_1 * 0.607252935008882888112680 ) + 0.5;
-    k_table[24] = ( FACTOR_1 * 0.607252935008881777889655 ) + 0.5;
-    k_table[25] = ( FACTOR_1 * 0.607252935008881555845051 ) + 0.5;
-    k_table[26] = ( FACTOR_1 * 0.607252935008881444822748 ) + 0.5;
-    k_table[27] = ( FACTOR_1 * 0.607252935008881444822748 ) + 0.5;
-    k_table[28] = ( FACTOR_1 * 0.607252935008881444822748 ) + 0.5;
-    k_table[29] = ( FACTOR_1 * 0.607252935008881444822748 ) + 0.5;
-    k_table[30] = ( FACTOR_1 * 0.607252935008881444822748 ) + 0.5;
-    k_table[31] = ( FACTOR_1 * 0.607252935008881444822748 ) + 0.5;
+    k_table[0]  = ( FACTOR_1 * 0.707106781186547572737311 );
+    k_table[1]  = ( FACTOR_1 * 0.632455532033675882352952 );
+    k_table[2]  = ( FACTOR_1 * 0.613571991077896394806146 );
+    k_table[3]  = ( FACTOR_1 * 0.608833912517752429138795 );
+    k_table[4]  = ( FACTOR_1 * 0.607648256256168250999394 );
+    k_table[5]  = ( FACTOR_1 * 0.607351770141296043448165 );
+    k_table[6]  = ( FACTOR_1 * 0.607277644093526136614969 );
+    k_table[7]  = ( FACTOR_1 * 0.607259112298892844705733 );
+    k_table[8]  = ( FACTOR_1 * 0.607254479332562491222802 );
+    k_table[9]  = ( FACTOR_1 * 0.607253321089875286453719 );
+    k_table[10] = ( FACTOR_1 * 0.607253031529134457144892 );
+    k_table[11] = ( FACTOR_1 * 0.607252959138944947703465 );
+    k_table[12] = ( FACTOR_1 * 0.607252941041397265031776 );
+    k_table[13] = ( FACTOR_1 * 0.607252936517010399875005 );
+    k_table[14] = ( FACTOR_1 * 0.607252935385913628074661 );
+    k_table[15] = ( FACTOR_1 * 0.607252935103139490635726 );
+    k_table[16] = ( FACTOR_1 * 0.607252935032445928520417 );
+    k_table[17] = ( FACTOR_1 * 0.607252935014772510236014 );
+    k_table[18] = ( FACTOR_1 * 0.607252935010354155664913 );
+    k_table[19] = ( FACTOR_1 * 0.607252935009249594777714 );
+    k_table[20] = ( FACTOR_1 * 0.607252935008973482311490 );
+    k_table[21] = ( FACTOR_1 * 0.607252935008904426439358 );
+    k_table[22] = ( FACTOR_1 * 0.607252935008887217982476 );
+    k_table[23] = ( FACTOR_1 * 0.607252935008882888112680 );
+    k_table[24] = ( FACTOR_1 * 0.607252935008881777889655 );
+    k_table[25] = ( FACTOR_1 * 0.607252935008881555845051 );
+    k_table[26] = ( FACTOR_1 * 0.607252935008881444822748 );
+    k_table[27] = ( FACTOR_1 * 0.607252935008881444822748 );
+    k_table[28] = ( FACTOR_1 * 0.607252935008881444822748 );
+    k_table[29] = ( FACTOR_1 * 0.607252935008881444822748 );
+    k_table[30] = ( FACTOR_1 * 0.607252935008881444822748 );
+    k_table[31] = ( FACTOR_1 * 0.607252935008881444822748 );
 */
 end // init_cordic_table
 

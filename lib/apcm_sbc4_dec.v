@@ -416,34 +416,34 @@ assign sb_tid = sb_tid_i;
 assign sb_tvalid = sb_tvalid_i;
 
 localparam real FACTOR_1 = ( 2.0 ** ( COEFF_WIDTH - 1 )) - 1;
-// Prototype filter coefficients, add or subtract 0.5 for correct rounding
-localparam real PTC1  = ( 5.3654897628474e-04 * FACTOR_1 ) + 0.5;
-localparam real PTC2  = ( 1.4918835706273e-03 * FACTOR_1 ) + 0.5;
-localparam real PTC3  = ( 2.7337090367926e-03 * FACTOR_1 ) + 0.5;
-localparam real PTC4  = ( 3.8372019280091e-03 * FACTOR_1 ) + 0.5;
-localparam real PTC5  = ( 3.8920514850040e-03 * FACTOR_1 ) + 0.5;
-localparam real PTC6  = ( 1.8658169061497e-03 * FACTOR_1 ) + 0.5;
-localparam real PTC7  = ( -3.0601228600951e-03 * FACTOR_1 ) - 0.5;
-localparam real PTC8  = ( -1.0913762016690e-02 * FACTOR_1 ) - 0.5;
-localparam real PTC9  = ( -2.0438508719161e-02 * FACTOR_1 ) - 0.5;
-localparam real PTC10 = ( -2.8875739180821e-02 * FACTOR_1 ) - 0.5;
-localparam real PTC11 = ( -3.2193928982763e-02 * FACTOR_1 ) - 0.5;
-localparam real PTC12 = ( -2.5876781146790e-02 * FACTOR_1 ) - 0.5;
-localparam real PTC13 = ( -6.1324518594809e-03 * FACTOR_1 ) - 0.5;
-localparam real PTC14 = ( 2.8821727426597e-02 * FACTOR_1 ) + 0.5;
-localparam real PTC15 = ( 7.7646349365466e-02 * FACTOR_1 ) + 0.5;
-localparam real PTC16 = ( 1.3559327369645e-01 * FACTOR_1 ) + 0.5;
-localparam real PTC17 = ( 1.9498784104769e-01 * FACTOR_1 ) + 0.5;
-localparam real PTC18 = ( 2.4663666230909e-01 * FACTOR_1 ) + 0.5;
-localparam real PTC19 = ( 2.8182820289485e-01 * FACTOR_1 ) + 0.5;
-localparam real PTC20 = ( 2.9431533161836e-01 * FACTOR_1 ) + 0.5;
+// Prototype filter coefficients
+localparam real PTC1  = ( 5.3654897628474e-04 * FACTOR_1 );
+localparam real PTC2  = ( 1.4918835706273e-03 * FACTOR_1 );
+localparam real PTC3  = ( 2.7337090367926e-03 * FACTOR_1 );
+localparam real PTC4  = ( 3.8372019280091e-03 * FACTOR_1 );
+localparam real PTC5  = ( 3.8920514850040e-03 * FACTOR_1 );
+localparam real PTC6  = ( 1.8658169061497e-03 * FACTOR_1 );
+localparam real PTC7  = ( -3.0601228600951e-03 * FACTOR_1 );
+localparam real PTC8  = ( -1.0913762016690e-02 * FACTOR_1 );
+localparam real PTC9  = ( -2.0438508719161e-02 * FACTOR_1 );
+localparam real PTC10 = ( -2.8875739180821e-02 * FACTOR_1 );
+localparam real PTC11 = ( -3.2193928982763e-02 * FACTOR_1 );
+localparam real PTC12 = ( -2.5876781146790e-02 * FACTOR_1 );
+localparam real PTC13 = ( -6.1324518594809e-03 * FACTOR_1 );
+localparam real PTC14 = ( 2.8821727426597e-02 * FACTOR_1 );
+localparam real PTC15 = ( 7.7646349365466e-02 * FACTOR_1 );
+localparam real PTC16 = ( 1.3559327369645e-01 * FACTOR_1 );
+localparam real PTC17 = ( 1.9498784104769e-01 * FACTOR_1 );
+localparam real PTC18 = ( 2.4663666230909e-01 * FACTOR_1 );
+localparam real PTC19 = ( 2.8182820289485e-01 * FACTOR_1 );
+localparam real PTC20 = ( 2.9431533161836e-01 * FACTOR_1 );
 
 localparam NR_COEFF = 40;
-localparam real COS_45 = ( 7.0710678118655e-01 * FACTOR_1 ) + 0.5;
+localparam real COS_45 = ( 7.0710678118655e-01 * FACTOR_1 );
 localparam COS_A = NR_COEFF;
-localparam real COS_22_5 = ( 9.2387953251129e-01 * FACTOR_1 ) + 0.5;
+localparam real COS_22_5 = ( 9.2387953251129e-01 * FACTOR_1 );
 localparam COS_B = NR_COEFF + 1;
-localparam real COS_67_5 = ( 3.8268343236509e-01 * FACTOR_1 ) + 0.5;
+localparam real COS_67_5 = ( 3.8268343236509e-01 * FACTOR_1 );
 localparam COS_C = NR_COEFF + 2;
 localparam real COS_0 = FACTOR_1;
 localparam signed [COEFF_WIDTH-1:0] cosine_d = COS_0; // Not used!
@@ -543,7 +543,7 @@ localparam NR_RAM_ELEMENTS = NR_CHANNELS * NR_COEFF;
 localparam NR_RAM_ELEMENTS_WIDTH = clog2( NR_RAM_ELEMENTS );
 
  // Block ram has intermediate registers width, not audio samples width!
-(* ram_style = "block" *)
+(* ram_style = "block" *) // AMD-Xilinx synthesis attribute
 reg signed [CALC_WIDTH-1:0] ram_data[0:NR_RAM_ELEMENTS-1];
 
 /*============================================================================*/

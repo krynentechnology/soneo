@@ -151,13 +151,13 @@ end // collect_eq_data
 function signed [EQ_COEFF_WIDTH-1:0] signed_eq_coeff( input real eq_coeff );
 /*============================================================================*/
     reg [EQ_COEFF_WIDTH-1:0] eq_coeff_r;
-    begin // The equalizer rounds towards zero after summation or multiplication, add or subtract 0.5
+    begin
         if ( eq_coeff >= 0.0 ) begin
-            eq_coeff_r = ((( 2.0 ** ( EQ_COEFF_WIDTH - 4 ) - 1 ) * eq_coeff ) + 0.5 );
+            eq_coeff_r = (( 2.0 ** ( EQ_COEFF_WIDTH - 4 ) - 1 ) * eq_coeff );
             signed_eq_coeff = $signed( eq_coeff_r );
         end
         else begin
-            eq_coeff_r = ((( 2.0 ** ( EQ_COEFF_WIDTH - 4 ) - 1 ) * eq_coeff ) - 0.5 );
+            eq_coeff_r = (( 2.0 ** ( EQ_COEFF_WIDTH - 4 ) - 1 ) * eq_coeff );
             signed_eq_coeff = $signed( eq_coeff_r );
         end
     end

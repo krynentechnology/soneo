@@ -258,9 +258,9 @@ output wire overflow;
  * generally 48kHz audio could be converted down to 44.1kHz or 32kHz.
  **/
 localparam real FACTOR_1 = 2.0 ** ( CNTRW - 1 ); // 1.0 == power 2 fraction width
-localparam real ONE_SIXTH = ( FACTOR_1 / 6.0 ) + 0.5; // 1/6 factor
-localparam real ONE_TWELFTH = ( FACTOR_1 / 12.0 ) + 0.5; // 1/12 factor
-localparam real ONE_TWENTY_FOURTH = ( FACTOR_1 / 24.0 ) + 0.5; // 1/24 factor
+localparam real ONE_SIXTH = ( FACTOR_1 / 6.0 ); // 1/6 factor
+localparam real ONE_TWELFTH = ( FACTOR_1 / 12.0 ); // 1/12 factor
+localparam real ONE_TWENTY_FOURTH = ( FACTOR_1 / 24.0 ); // 1/24 factor
 
 // Parameter checks
 /*============================================================================*/

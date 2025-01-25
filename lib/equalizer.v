@@ -72,7 +72,7 @@ localparam CHANNEL_WIDTH = clog2( NR_CHANNELS );
 
 input  wire clk;
 input  wire rst_n;
-input  wire [EQ_COEFF_WIDTH-1:0] eq_coeff;
+input  wire [EQ_COEFF_WIDTH-1:0] eq_coeff; // S3.EQ_COEFF_WIDTH-4 fractional value
 output wire [EQ_COEFF_ADDR_WIDTH-1:0] eq_coeff_addr;
 input  wire [INPUT_WIDTH-1:0] s_eq_d;
 input  wire [CHANNEL_WIDTH-1:0] s_eq_ch;
@@ -126,7 +126,7 @@ reg b2 = 0;
 reg b2_done = 0;
 reg signed [( 2 * EQ_COEFF_WIDTH )-1:0] sum = 0;
 reg signed [( 2 * EQ_COEFF_WIDTH )-1:0] product = 0;
-(* ram_style = "block" *)
+(* ram_style = "block" *) // AMD-Xilinx synthesis attribute
 reg signed [EQ_SAMPLE_WIDTH-1:0] eq_ram[NR_EQ_ELEMENTS-1:0];
 
 integer i = 0;
@@ -135,8 +135,8 @@ localparam NOISE_BITS = EQ_COEFF_WIDTH - INPUT_WIDTH - EQ_HEADROOM_BITS;
 localparam COEFF_HEADROOM = 3; // coefficient gain range = -8.0 to 8.0 (3-bit headroom)
 localparam EQ_SUM_HEADROOM = COEFF_HEADROOM + 1; // +1 for duplicate sign bit (signed multiplication)
 localparam MAX_EQ_COEFF_WIDTH = 36;
-localparam [MAX_EQ_COEFF_WIDTH-1:0] ALL_ZERO = 0; // 00000...
-localparam [MAX_EQ_COEFF_WIDTH-1:0] ALL_ONES = -1; // 11111...
+localparam signed [MAX_EQ_COEFF_WIDTH-1:0] ALL_ZERO = 0; // 00000...
+localparam signed [MAX_EQ_COEFF_WIDTH-1:0] ALL_ONES = -1; // 11111...
 
 /*============================================================================*/
 initial begin // Parameter checks
