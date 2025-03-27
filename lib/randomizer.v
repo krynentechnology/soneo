@@ -1,5 +1,5 @@
 /**
- *  Copyright (C) 2024, Kees Krijnen.
+ *  Copyright (C) 2024, 2025, Kees Krijnen.
  *
  *  This program is free software: you can redistribute it and/or modify it
  *  under the terms of the GNU Lesser General Public License as published by the
@@ -127,7 +127,7 @@ initial begin : init_lsfr_tap
     for ( n = 0; n < NR_CHANNELS; n = n + 1 ) begin
         lfsr_ch[n] = 0;
     end
-    // Tap points to insert XNOR gates as feedback, (2^OUTPUT_WIDTH)-1 numbers are
+    // Tap points to insert XOR gates as feedback, (2^OUTPUT_WIDTH)-1 numbers are
     // cycled through before the sequence is repeated (see Xilinx XAPP052)
     LFSR_TAP = 0;
     case ( OUTPUT_WIDTH )
