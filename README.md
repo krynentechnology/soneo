@@ -6,11 +6,13 @@
   <li><a href="lib/apcm_sbc4_enc.v">APCM</a>  (Bluetooth A2DP 16-bits audio codec)</li>
   <li><a href="lib/compander.v">Compander</a>  (20/27-bit compander to/from 16-bit two's complement)</li>
   <li><a href="lib/equalizer.v">Equalizer</a>  (IIR filter biquad cascaded bands)</li>
+  <li><a href="lib/i2c_m.v">I2C</a>  (master, 10-bit support)</li>
   <li><a href="lib/i2s_tdm_enc.v">I2S/TDM</a>  (I2S/TDM encoder and decoder)</li>
   <li><a href="lib/interpolator.v">Interpolator</a>  (1st, 2nd, 3rd, 4th and 5th order polynomial - optional signal attenuation)</li>
   <li><a href="lib/limiter.v">Limiter</a>  (signal companding based - optional signal attenuation)</li>
   <li><a href="lib/randomizer.v">Randomizer</a>  (periodic noise generator, Galois LFSR based)</li>
   <li><a href="lib/sine_wg_cor.v">Sine Wave Generator</a>  (CORDIC algorithm based)</li>
   <li><a href="lib/spi_slave.v">SPI</a>  (master/slave and io - read/write, interrupt)</li>
+  <li><a href="lib/uart.v">UART</a>  (console io support)</li>
   <li><a href="lib/vu_meter.v">VU meter</a></li>
 </ul>
