@@ -102,7 +102,7 @@ always @(posedge clk) begin : sda_data_rw
             sda_i_1 <= m_i2c_d_i_1[7]; // Write SDA
             if ( 2'b10 == scl_i_1 ) begin // Falling edge SCL
                 m_i2c_d_i_1 <= {m_i2c_d_i_1[6:0], 1'b1};
-            end    
+            end
         end
     end
 end // sda_data_rw
@@ -112,64 +112,13 @@ end // sda_data_rw
 reg passed = 0;
 integer i;
 /*============================================================================*/
-task i2c_read( input [9:0] da,
-               input [7:0] ra,
-               input string data ); // Data to read by I2C master!
-/*============================================================================*/
-begin
-    s_i2c_da_1 = da;
-    s_i2c_rd_1 = 1; // Read
-    s_i2c_10bit_1 = ( da[9:7] > 0 );
-    s_i2c_ra_1 = ra;
-    s_i2c_re_1 = ( ra > 0 );
-    wait ( s_i2c_ar_1 );
-    wait ( clk ) @( negedge clk );
-    s_i2c_av_1 = 1;
-    wait ( !s_i2c_ar_1 );
-    wait ( clk ) @( negedge clk );
-    s_i2c_av_1 = 0;
-    passed = 1;
-    if ( s_i2c_10bit_1 ) begin
-        wait ( ack_nack_1 );
-        wait ( !ack_nack_1 );
-    end
-    if ( s_i2c_re_1 ) begin
-        wait ( ack_nack_1 );
-        wait ( !ack_nack_1 );
-    end
-    for ( i = 0; i < data.len(); i = i + 1 ) begin
-        wait ( ack_nack_1 );
-        wait ( clk ) @( negedge clk );
-        if ( 0 == i ) begin
-            if ( s_i2c_re_1 ) begin
-                passed = passed && ( s_i2c_d_i_1 == ra ); 
-            end else if ( s_i2c_10bit_1 ) begin
-                passed = passed && ( s_i2c_d_i_1 == da[7:0] ); 
-            end else begin
-                passed = passed && ( s_i2c_d_i_1 == {da[6:0], 1'b1} ); 
-            end
-            ack_nack_i_1 = 0;
-        end
-        wait ( !ack_nack_1 );
-        wait ( 2'b10 == scl_ii_1 );
-        m_i2c_d_i_1 = data[i];
-        wait ( m_i2c_dv_1 )
-        passed = passed && ( m_i2c_d_1 == data[i] );
-    end
-    ack_nack_i_1 = 1; // Last byte sent
-    wait ( s_i2c_ar_1 );
-    ack_nack_i_1 = 0;
-end
-endtask // i2c_read
-
-/*============================================================================*/
 task i2c_write( input [9:0] da,
                 input [7:0] ra,
                 input string data );
 /*============================================================================*/
 begin
     s_i2c_da_1 = da;
-    s_i2c_rd_1 = 0; // Write
+    s_i2c_rd_1 = ( 0 == data.len() ); // Write, read for repeated start.
     s_i2c_10bit_1 = ( da[9:7] > 0 );
     s_i2c_ra_1 = ra;
     s_i2c_re_1 = ( ra > 0 );
@@ -184,13 +133,13 @@ begin
         wait ( s_i2c_dr_1 );
         wait ( clk ) @( negedge clk );
         if ( i > 0 ) begin
-            passed = passed && ( s_i2c_d_i_1 == data[i-1] ); 
+            passed = passed && ( s_i2c_d_i_1 == data[i-1] );
         end else if ( s_i2c_re_1 ) begin
-            passed = passed && ( s_i2c_d_i_1 == ra ); 
+            passed = passed && ( s_i2c_d_i_1 == ra );
         end else if ( s_i2c_10bit_1 ) begin
-            passed = passed && ( s_i2c_d_i_1 == da[7:0] ); 
+            passed = passed && ( s_i2c_d_i_1 == da[7:0] );
         end else begin
-            passed = passed && ( s_i2c_d_i_1 == {da[6:0], 1'b0} ); 
+            passed = passed && ( s_i2c_d_i_1 == {da[6:0], 1'b0} );
         end
         s_i2c_d_1 = data[i];
         s_i2c_dv_1 = 1;
@@ -198,14 +147,94 @@ begin
         wait ( clk ) @( negedge clk );
         s_i2c_dv_1 = 0;
     end
-    wait ( s_i2c_dr_1 );
-    wait ( clk ) @( negedge clk );
-    if ( i > 0 ) begin
-        passed = passed && ( s_i2c_d_i_1 == data[i-1] ); 
+    if ( data.len() ) begin
+        wait ( s_i2c_dr_1 );
+        wait ( clk ) @( negedge clk );
+        if ( i > 0 ) begin
+            passed = passed && ( s_i2c_d_i_1 == data[i-1] );
+        end
+        wait ( s_i2c_ar_1 );
+    end else begin // Repeated start condition
+        wait ( ack_nack_1 );
+        if ( s_i2c_10bit_1 ) begin
+            passed = passed && ( s_i2c_d_i_1 == {5'b11110, da[9:8], 1'b0} );
+            wait ( !ack_nack_1 );
+        end else begin
+            passed = ( s_i2c_d_i_1 == {da[6:0], 1'b0} );
+            wait ( !ack_nack_1 );
+        end
+        wait ( ack_nack_1 );
+        if ( s_i2c_10bit_1 ) begin
+            passed = passed && ( s_i2c_d_i_1 == da[7:0] );
+            wait ( !ack_nack_1 );
+            if ( s_i2c_re_1 ) begin
+                wait ( ack_nack_1 );
+                passed = passed && ( s_i2c_d_i_1 == ra );
+                wait ( !ack_nack_1 );
+            end
+        end else if ( s_i2c_re_1 ) begin
+            passed = passed && ( s_i2c_d_i_1 == ra );
+            wait ( !ack_nack_1 );
+        end
     end
-    wait ( s_i2c_ar_1 );
 end
 endtask // i2c_write
+
+/*============================================================================*/
+task i2c_read( input [9:0] da,
+               input [7:0] ra,
+               input string data ); // Data to read by I2C master!
+/*============================================================================*/
+begin
+    s_i2c_da_1 = da;
+    s_i2c_rd_1 = 1; // Read
+    s_i2c_10bit_1 = ( da[9:7] > 0 );
+    s_i2c_ra_1 = ra;
+    s_i2c_re_1 = ( ra > 0 );
+    ack_nack_i_1 = 0;
+    passed = 1;
+    if ( s_i2c_re_1 ) begin
+        i2c_write( da, ra, "" ); // Repeated start, s_i2c_ar stays low!
+        s_i2c_re_1 = 0;
+    end else begin
+        wait ( s_i2c_ar_1 );
+        wait ( clk ) @( negedge clk );
+        s_i2c_av_1 = 1;
+        wait ( !s_i2c_ar_1 );
+        wait ( clk ) @( negedge clk );
+        s_i2c_av_1 = 0;
+    end
+    if ( s_i2c_10bit_1 ) begin
+        wait ( ack_nack_1 );
+        wait ( !ack_nack_1 );
+    end
+    if ( s_i2c_re_1 ) begin
+        wait ( ack_nack_1 );
+        wait ( !ack_nack_1 );
+    end
+    for ( i = 0; i < data.len(); i = i + 1 ) begin
+        wait ( ack_nack_1 );
+        wait ( clk ) @( negedge clk );
+        if ( 0 == i ) begin
+            if ( s_i2c_re_1 ) begin
+                passed = passed && ( s_i2c_d_i_1 == ra );
+            end else if ( s_i2c_10bit_1 ) begin
+                passed = passed && ( s_i2c_d_i_1 == da[7:0] );
+            end else begin
+                passed = passed && ( s_i2c_d_i_1 == {da[6:0], 1'b1} );
+            end
+        end
+        wait ( !ack_nack_1 );
+        wait ( 2'b10 == scl_ii_1 );
+        m_i2c_d_i_1 = data[i];
+        wait ( m_i2c_dv_1 )
+        passed = passed && ( m_i2c_d_1 == data[i] );
+    end
+    ack_nack_i_1 = 1; // Last byte sent
+    wait ( s_i2c_ar_1 );
+    ack_nack_i_1 = 0;
+end
+endtask // i2c_read
 
 /*============================================================================*/
 function string result( input reg passed );
@@ -214,7 +243,7 @@ begin
     result = passed ? "passed" : "failed";
 end
 endfunction
- 
+
 /*============================================================================*/
 initial begin
 /*============================================================================*/
@@ -226,25 +255,25 @@ initial begin
     i2c_write( 10'h041, 8'h00, "M1" );
     $display( "I2C master 7-bit, no register, write - %s", result( passed ));
     #200 // 0.2us
-    i2c_write( 10'h201, 8'h00, "M2" );
+    i2c_write( 10'h289, 8'h00, "M2" );
     $display( "I2C master 10-bit, no register, write - %s", result( passed ));
     #200 // 0.2us
     i2c_write( 10'h041, 8'h81, "M3" );
     $display( "I2C master 7-bit, register, write - %s", result( passed ));
     #200 // 0.2us
-    i2c_write( 10'h201, 8'h81, "M4" );
+    i2c_write( 10'h289, 8'h81, "M4" );
     $display( "I2C master 10-bit, register, write - %s", result( passed ));
     #200 // 0.2us
     i2c_read( 10'h041, 8'h00, "S1" );
     $display( "I2C master 7-bit, no register, read - %s", result( passed ));
     #200 // 0.2us
-    i2c_read( 10'h201, 8'h00, "S2" );
+    i2c_read( 10'h289, 8'h00, "S2" );
     $display( "I2C master 10-bit, no register, read - %s", result( passed ));
     #200 // 0.2us
     i2c_read( 10'h041, 8'h81, "S3" );
     $display( "I2C master 7-bit, register, read - %s", result( passed ));
     #200 // 0.2us
-    i2c_read( 10'h201, 8'h81, "S4" );
+    i2c_read( 10'h289, 8'h81, "S4" );
     $display( "I2C master 10-bit, register, read - %s", result( passed ));
     #500 // 0.5us
     $display( "Simulation finished" );

@@ -44,7 +44,7 @@
  *  master will first write (LSB=0) the (device) register address to read from
  *  and then send a repeated START condition with device address to read (LSB=1)
  *  the data from the (device) register address. Once the master has received
- *  the expected number of bytes, its send a NACK followed up by a STOP
+ *  the expected number of bytes, it sends a NACK followed up by a STOP
  *  condition.
  *
  *  https://en.wikipedia.org/wiki/I%C2%B2C
@@ -117,16 +117,16 @@ localparam CLK_COUNT_WIDTH = clog2( TOGGLE_COUNT );
 localparam CLKW = CLK_COUNT_WIDTH;
 localparam [CLKW-1:0] TX_SAMPLE = TOGGLE_COUNT >> 1; // START, STOP, DATA (SCL = 0)
 localparam [CLKW-1:0] RX_SAMPLE = TOGGLE_COUNT - 1; // Slave DATA (SCL = 1)
-localparam [1:0] CLK_INIT = 2'b01;
 localparam ACK_BIT_COUNT = 9;
 localparam BIT_COUNT_1 = 4'd1;
 
-reg [1:0] scl_i = CLK_INIT;
+reg scl_i = 1;
 reg [CLKW-1:0] clk_count = 0;
 reg [3:0] bit_count = 0;
-reg [7:0] s_i2c_da_i = 0;
+reg [9:0] s_i2c_da_i = 0;
 reg s_i2c_rd_i = 0;
 reg s_i2c_10bit_i = 0;
+reg s_i2c_10bit_ii = 0;
 reg s_i2c_ar_n = 0;
 reg s_i2c_dr_i = 0;
 reg [7:0] s_i2c_ra_i = 0;
@@ -134,6 +134,9 @@ reg s_i2c_re_i = 0;
 reg [7:0] s_i2c_d_i = 0;
 reg init = 0;
 reg start = 0;
+reg repeated_start = 0;
+reg repeated_start_i = 0;
+reg repeated_start_ii = 0;
 reg read = 0;
 reg write = 0;
 reg stop = 0;
@@ -144,13 +147,13 @@ wire data_stage;
 wire rx;
 
 assign s_i2c_dr = s_i2c_dr_i;
-assign scl = scl_i[0];
+assign scl = scl_i;
 assign s_i2c_ar = ~s_i2c_ar_n;
 assign sda = sda_oe ? sda_o : 1'bZ;
 assign sda_ii = TL_BIDIR ? sda_i : sda;
 assign data_stage = ~( s_i2c_10bit_i || s_i2c_re_i );
 assign ack_nack = ( ACK_BIT_COUNT == bit_count );
-assign rx = ( scl_i[0] & ( RX_SAMPLE == clk_count ));
+assign rx = ( scl_i & ( RX_SAMPLE == clk_count ));
 
 /*============================================================================*/
 always @(posedge clk) begin : i2c_protocol
@@ -158,9 +161,9 @@ always @(posedge clk) begin : i2c_protocol
     if ( init || s_i2c_ar_n ) begin
         clk_count <= clk_count + 1;
         if ( TOGGLE_COUNT == clk_count ) begin
-            scl_i <= {scl_i[0], scl_i[1]}; // Toggle scl
+            scl_i <= ~scl_i; // Toggle scl
             clk_count <= 0;
-            if ( scl_i[0] ) begin // SCL = 1
+            if ( scl_i ) begin // SCL = 1
                 bit_count <= bit_count + 1;
                 if ( ack_nack ) begin
                     bit_count <= BIT_COUNT_1;
@@ -180,11 +183,18 @@ always @(posedge clk) begin : i2c_protocol
                         stop <= 1;
                     end
                 end
+                if ( data_stage && repeated_start_i) begin
+                    repeated_start_i <= 0;
+                    repeated_start <= repeated_start_i;
+                    scl_i <= 1; // Do not toggle scl!
+                    sda_o <= 1; // Setup repeated start condition
+                    sda_oe <= 1;
+                end
                 if (( ack_nack && init ) || stop_i ) begin
                     init <= 0;
                     stop <= 0;
                     stop_i <= 0;
-                    scl_i <= scl_i; // Do not toggle scl!
+                    scl_i <= 1; // Do not toggle scl!
                     s_i2c_ar_n <= 0; // I2C communication stops
                 end
             end
@@ -198,7 +208,7 @@ always @(posedge clk) begin : i2c_protocol
                     end
                 end
             end else if ( TX_SAMPLE == clk_count ) begin
-                if ( scl_i[0] ) begin // SCL = 1
+                if ( scl_i ) begin // SCL = 1
                     if ( start ) begin
                         start <= 0;
                         sda_o <= 0;
@@ -218,66 +228,92 @@ always @(posedge clk) begin : i2c_protocol
                         sda_oe <= 1;
                         s_i2c_d_i <= {s_i2c_d_i[6:0], 1'b1};
                     end
-                end    
+                end
             end
             s_i2c_dr_i <= s_i2c_dr_i & ~s_i2c_dv;
             m_i2c_dv <= 0;
             if ( ack_nack ) begin // I2C master/slave ACK/NACK
-                sda_oe <= read;
-                if ( read ) begin
-                    sda_o <= ack_nack_i;
-                    m_i2c_d <= s_i2c_d_i;
-                    m_i2c_dv <= 1;
-                end
-                if ( write ) begin // Write
-                    s_i2c_dr_i <= data_stage;
-                    if ( s_i2c_dv ) begin
-                        write <= 0;
-                        s_i2c_dr_i <= 0;
-                        s_i2c_d_i <= s_i2c_d;
+                if ( data_stage && repeated_start_ii ) begin
+                    repeated_start_ii <= 0;
+                    repeated_start_i <= repeated_start_ii;
+                end else begin
+                    sda_oe <= read;
+                    if ( read ) begin
+                        sda_o <= ack_nack_i;
+                        m_i2c_d <= s_i2c_d_i;
+                        m_i2c_dv <= 1;
                     end
-                end
-                if ( rx && !s_i2c_rd_i ) begin
-                    ack_nack_o <= sda_ii;
+                    if ( write ) begin // Write
+                        s_i2c_dr_i <= data_stage;
+                        if ( s_i2c_dv ) begin
+                            write <= 0;
+                            s_i2c_dr_i <= 0;
+                            s_i2c_d_i <= s_i2c_d;
+                        end
+                    end
+                    if ( rx && !s_i2c_rd_i ) begin
+                        ack_nack_o <= sda_ii;
+                    end
                 end
             end else begin
                 write <= !s_i2c_rd_i;
                 s_i2c_dr_i <= 0;
             end
         end
-    end else if ( s_i2c_av ) begin
-        s_i2c_ar_n <= 1;
-        if ( s_i2c_10bit ) begin
-            s_i2c_da_i <= s_i2c_da[7:0];
-            // Always first write (upper) device address
-            s_i2c_d_i[0] <= ~s_i2c_re & s_i2c_rd;
-            s_i2c_d_i[2:1] <= s_i2c_da[9:8];
-            s_i2c_d_i[7:3] <= 5'b11110;
+    end
+    if (( s_i2c_av  && s_i2c_ar ) || repeated_start ) begin
+        s_i2c_ar_n <= 1; // ~s_i2c_ar
+        if ( repeated_start ) begin
+            repeated_start <= 0;
+            if ( s_i2c_10bit_ii ) begin
+                // Always first write (upper) device address
+                s_i2c_d_i[0] <= 0;
+                s_i2c_d_i[2:1] <= s_i2c_da_i[9:8];
+                s_i2c_d_i[7:3] <= 5'b11110;
+            end else begin
+                s_i2c_d_i[7:0] <= {s_i2c_da_i[6:0], 1'b1}; // Read!
+            end
+            s_i2c_10bit_i <= s_i2c_10bit_ii;
         end else begin
-            s_i2c_d_i <= {s_i2c_da[6:0], ( ~s_i2c_re & s_i2c_rd )};
+            s_i2c_da_i <= s_i2c_da;
+            s_i2c_rd_i <= s_i2c_rd;
+            s_i2c_10bit_i <= s_i2c_10bit;
+            s_i2c_10bit_ii <= s_i2c_10bit;
+            s_i2c_ra_i <= s_i2c_ra;
+            s_i2c_re_i <= s_i2c_re;
+            if ( s_i2c_10bit ) begin
+                // Always first write (upper) device address
+                s_i2c_d_i[0] <= ~s_i2c_re & s_i2c_rd;
+                s_i2c_d_i[2:1] <= s_i2c_da[9:8];
+                s_i2c_d_i[7:3] <= 5'b11110;
+            end else begin
+                s_i2c_d_i[7:0] <= {s_i2c_da[6:0], ( ~s_i2c_re & s_i2c_rd )};
+            end
+            repeated_start_i <= 0;
+            repeated_start_ii <= s_i2c_re & s_i2c_rd;
         end
-        s_i2c_rd_i <= s_i2c_rd;
-        s_i2c_10bit_i <= s_i2c_10bit;
-        s_i2c_ra_i <= s_i2c_ra;
-        s_i2c_re_i <= s_i2c_re;
         clk_count <= 0;
-        bit_count <= 0; // START
+        bit_count <= 0; // START condition
         start <= 1;
         read <= 0;
         write <= 0;
-        scl_i <= CLK_INIT;
-    end
-    if ( !rst_n ) begin
+        scl_i <= 1;
         sda_o <= 1;
         sda_oe <= 1;
+    end
+    if ( !rst_n ) begin
         s_i2c_ar_n <= 1;
         m_i2c_d <= 0;
         m_i2c_dv <= 0;
         s_i2c_dr_i <= 0;
+        stop <= 0;
         stop_i <= 0;
+        repeated_start <= 0;
         // Start with ACK_BIT_COUNT clock outputs, see AN-686 I2C reset.
         init <= 1;
-        scl_i <= CLK_INIT;
+        scl_i <= 1;
+        sda_o <= 1;
+        sda_oe <= 1;
         clk_count <= 0;
         bit_count <= 0;
     end
