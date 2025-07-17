@@ -167,7 +167,7 @@ always @(posedge clk) begin : i2c_protocol
                 bit_count <= bit_count + 1;
                 if ( ack_nack ) begin
                     bit_count <= BIT_COUNT_1;
-                    read <= s_i2c_rd_i && data_stage;
+                    read <= s_i2c_rd_i & data_stage;
                     if ( s_i2c_10bit_i ) begin
                         s_i2c_10bit_i <= 0;
                         // Write lower byte 10-bit device address
