@@ -1,8 +1,10 @@
 echo off
 :: make file for Icarus Verilog simulator
-if not defined IVERILOG (
-  set IVERILOG=%1
-  set PATH=%PATH%;%1\bin
+if not "%1"=="" (
+  if not defined IVERILOG (
+    set IVERILOG=%1
+    set PATH=%PATH%;%1\bin
+  )
 )
 if not defined IVERILOG (
   echo Run batch file with path to Icarus Verilog simulator installed directory
