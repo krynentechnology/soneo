@@ -411,7 +411,7 @@ reg next_x = 0;
 reg next_x_i = 0;
 reg yx = 0;
 
-assign s_intrp_nchr = s0 & ( NR_CHANNELS > 1 ); // Set next channel already if required!
+assign s_intrp_nchr = s0; // Set next channel already or stop attenuation if required!
 wire [CNTRW:0] acc_fraction_c;
 assign acc_fraction_c = acc_fraction_i + {1'b0, step_i};
 wire next_x_c;
