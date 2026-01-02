@@ -3,7 +3,7 @@ echo off
 if not "%1"=="" (
   if not defined IVERILOG (
     set IVERILOG=%1
-    set PATH=%PATH%;%1\bin
+    set PATH=%PATH%;%1\bin;%1\lib
   )
 )
 if not defined IVERILOG (
