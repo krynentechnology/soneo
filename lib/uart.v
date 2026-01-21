@@ -121,8 +121,7 @@ always @(posedge clk) begin : process_rx
     end
     if (( 0 == rx_bit_count ) && ( 2'b10 == uart_rx_i )) begin
         rx_clk_count <= 0;
-    end
-    if ( RX_SAMPLE == rx_clk_count ) begin
+    end else if ( RX_SAMPLE == rx_clk_count ) begin
         if (( 0 == rx_bit_count ) && ( 0 == uart_rx )) begin
             rx_bit_count <= 1; // Start bit
         end
@@ -147,6 +146,7 @@ always @(posedge clk) begin : process_rx
         uart_rx_i <= ~0;
         uart_rx_d_i <= 0;
         uart_rx_dv <= 0;
+        rx_clk_count <= 0;
     end
 end
 
