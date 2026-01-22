@@ -23,6 +23,10 @@
 `timescale 1ns / 1ps
 `default_nettype none
 
+// Dependencies:
+// `include "uart.v"
+// `include "uart_io.v"
+
 /*============================================================================*/
 module uart_tb;
 /*============================================================================*/
@@ -254,14 +258,14 @@ begin
     if ( 4 == uart ) begin
         wait ( uart4_io_tx_dr );
         wait ( clk ) @( negedge clk );
-        uart4_io_tx_d = uart_d;
+        uart4_io_tx_d = uart_d[NR_BITS_1-1:0];
         uart4_io_tx_dv = 1;
         wait ( !uart4_io_tx_dr );
         wait ( clk ) @( negedge clk );
         uart4_io_tx_dv = 0;
     end
 end
-endtask // mdio_rw
+endtask // uart_write
 
 /*============================================================================*/
 initial begin
