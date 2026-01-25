@@ -38,7 +38,7 @@ module uart #(
     input  wire clk,
     input  wire rst_n, // High when clock stable!
     // RX
-    output reg [NR_BITS-1:0] uart_rx_d = 0,
+    output wire [NR_BITS-1:0] uart_rx_d,
     output reg uart_rx_dv = 0,
     output reg parity_ok = 0,
     // TX
@@ -72,32 +72,31 @@ initial begin : parameter_check
     end
 end // parameter_check
 
-localparam MAX_CLOG2_WIDTH = 32;
 /*============================================================================*/
-function integer clog2( input [MAX_CLOG2_WIDTH-1:0] value );
+function integer clog2( input [31:0] value );
 /*============================================================================*/
-    reg [MAX_CLOG2_WIDTH-1:0] depth;
-    begin
-        clog2 = 1; // Minimum bit width
-        if ( value > 1 ) begin
-            depth = value - 1;
-            clog2 = 0;
-            while ( depth > 0 ) begin
-                depth = depth >> 1;
-                clog2 = clog2 + 1;
-            end
+    reg [31:0] depth;
+begin
+    clog2 = 1; // Minimum bit width
+    if ( value > 1 ) begin
+        depth = value - 1;
+        clog2 = 0;
+        while ( depth > 0 ) begin
+            depth = depth >> 1;
+            clog2 = clog2 + 1;
         end
     end
+end
 endfunction // clog2
 
 localparam [0:0] START_BITS = 1;
 localparam [0:0] PARITY_BITS = ( "NONE" == PARITY ) ? 0 : 1;
 localparam [4:0] START_STOP_WIDTH = START_BITS + NR_BITS + PARITY_BITS + STOP_BITS;
-localparam [3:0] STSTW = clog2( START_STOP_WIDTH );
-localparam integer CLK_DIV_BAUD = ( CLK_FREQ / BAUD_RATE );
+localparam [4:0] STSTW = clog2( START_STOP_WIDTH );
+localparam integer CLK_DIV_BAUD = ( CLK_FREQ / BAUD_RATE ); // Round to nearest integer!
 localparam CLK_COUNT_WIDTH = clog2( CLK_DIV_BAUD );
 localparam CLKW = CLK_COUNT_WIDTH;
-localparam [CLKW-1:0] RX_SAMPLE = ( CLK_DIV_BAUD / 2.0 ) - 1;
+localparam [CLKW-1:0] RX_SAMPLE = ( CLK_DIV_BAUD >> 1 ) - 1;
 
 reg [1:0] uart_rx_i = ~0; // All 1's
 reg [CLKW-1:0] rx_clk_count = 0;
@@ -109,6 +108,8 @@ reg [STSTW-1:0] tx_bit_count = 0;
 reg [NR_BITS-1:0] uart_tx_d_i = 0;
 reg uart_tx_dr_i = 1;
 reg tx_d_parity = 0;
+
+assign uart_rx_d = uart_rx_d_i;
 
 /*============================================================================*/
 always @(posedge clk) begin : process_rx
@@ -131,7 +132,6 @@ always @(posedge clk) begin : process_rx
                 uart_rx_d_i <= {uart_rx, uart_rx_d_i[NR_BITS-1:1]};
             end
             if (( NR_BITS + 1 ) == rx_bit_count ) begin
-                uart_rx_d <= uart_rx_d_i;
                 uart_rx_dv <= 1;
                 if ( "EVEN" == PARITY ) begin // Conditional synthesis!
                     parity_ok <= ( ^uart_rx_d_i == uart_rx );

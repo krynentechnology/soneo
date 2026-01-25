@@ -61,17 +61,16 @@ initial begin : parameter_check
         $display( "NR_BITS = 8 expected for console interaction!" );
         $finish;
     end
-    if ( RX_FIFO < 1 ) begin
-        $display( "RX_FIFO < 1!" );
+    if ( RX_FIFO < 2 ) begin
+        $display( "RX_FIFO < 2!" );
         $finish;
     end
 end // parameter_check
 
-localparam MAX_CLOG2_WIDTH = 32;
 /*============================================================================*/
-function integer clog2( input [MAX_CLOG2_WIDTH-1:0] value );
+function integer clog2( input [31:0] value );
 /*============================================================================*/
-reg [MAX_CLOG2_WIDTH-1:0] depth;
+reg [31:0] depth;
 begin
     clog2 = 1; // Minimum bit width
     if ( value > 1 ) begin
@@ -86,11 +85,11 @@ end
 endfunction // clog2
 
 /*============================================================================*/
-function integer strlen( input [( 10 * NR_BITS )-1:0] prompt );
+function integer strlen( input [( 10 * 8 )-1:0] prompt );
 /*============================================================================*/
 begin
     strlen = 0;
-    while (( prompt >> ( strlen * NR_BITS )) != 0 ) begin
+    while (( prompt >> ( strlen * 8 )) != 0 ) begin
         strlen = strlen + 1;
     end
 end
@@ -127,7 +126,7 @@ initial begin : init_prompt
 /*============================================================================*/
     prompt[0] = LF;
     for ( i = 1; i < TX_PROMPT_SIZE; i = i + 1 ) begin
-        prompt[i] = ( PROMPT >> (( PROMPT_SIZE - i ) * NR_BITS ));
+        prompt[i] = ( PROMPT >> (( PROMPT_SIZE - i ) * 8 ));
     end
 //  for ( i = 0; i < TX_PROMPT_SIZE; i = i + 1 ) begin
 //      $display( "prompt[%0d] = %x, %d, %d ", i, prompt[i], PROMPT_SIZE, TX_PROMPT_SIZE );
